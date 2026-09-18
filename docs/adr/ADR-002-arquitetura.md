@@ -40,3 +40,28 @@ frameworks e integrações externas. Volume inicial de equipe e tráfego é pequ
 
 Uma alteração na forma de cálculo do ICMS jamais obriga mudança na
 representação de documento fiscal, e vice-versa.
+
+## Critérios de revisão (gatilhos objetivos para extrair serviços)
+
+O monolito modular é a decisão **para a fase atual**, não para sempre.
+Extração de um contexto para serviço independente é justificada quando
+qualquer um destes gatilhos se materializar — e nenhum existe hoje:
+
+1. **Escala de carga seletiva** — cálculo precisar escalar horizontalmente
+   independente do authoring (ex.: lote de milhões de operações em pico);
+2. **Escala organizacional** — times distintos donos de contexto com
+   cadências de deploy em conflito comprovado;
+3. **SLA/compliance diferenciado** — exigência contratual de isolamento por
+   componente (authoring sensível vs. cálculo público);
+4. **Isolamento de falha** — degradação de um componente afetando o outro,
+   comprovada em incidente real.
+
+Primeiro candidato natural, se um dia houver: `RuleCatalog` (authoring e
+workflow) separado de `TaxDecision` (cálculo em runtime) — perfis de carga e
+público distintos. Contratos atuais (payload versionado, vocabulário de
+specifications, ports hexagonais) foram desenhados para sobreviver à extração
+sem quebrar clientes.
+
+O que NÃO muda com extração: decisões permanecem determinísticas e auditáveis
+— versão de motor + snapshot de regras + asOfDate viajam com a requisição,
+independente da topologia.
