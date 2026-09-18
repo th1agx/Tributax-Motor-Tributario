@@ -8,8 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "npm run test --workspace=@tributax/domain",
-    "build": "npm run build --workspace=@tributax/domain"
+    "test": "npm run test --workspace=@tributax/domain && npm run test --workspace=@tributax/api",
+    "build": "npm run build --workspace=@tributax/domain && npm run build --workspace=@tributax/api"
   },
   "engines": {
     "node": ">=22"
