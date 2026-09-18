@@ -55,7 +55,8 @@ jobs:
         run: npm ci
 
       - name: Apply migrations
-        run: npx drizzle-kit migrate --config packages/infrastructure/drizzle.config.ts
+        working-directory: packages/infrastructure
+        run: npx drizzle-kit migrate
 
       - name: Apply custom constraints (vigência disjunta)
         run: |
