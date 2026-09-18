@@ -6,13 +6,14 @@ import request from "supertest";
 import { ExpressAdapter } from "@nestjs/platform-express";
 import { TaxDecisionsController } from "../src/tax-decisions/tax-decisions.controller.js";
 import { PartiesController } from "../src/parties/parties.controller.js";
+import { RulesAdminController } from "../src/rules/rule-admin.controller.js";
 
 describe("API e2e — /v1/tax-decisions", () => {
   let app: INestApplication;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      controllers: [TaxDecisionsController, PartiesController],
+      controllers: [TaxDecisionsController, PartiesController, RulesAdminController],
     }).compile();
     app = moduleRef.createNestApplication(new ExpressAdapter());
     await app.init();
@@ -147,6 +148,82 @@ describe("API e2e — /v1/tax-decisions", () => {
         correlationId: "e2e-party-3",
         context: { issuer: { partyRef: "00000000000000" } },
         items: [{ unitPrice: { amount: 1000 } }],
+      })
+      .expect(400);
+  });
+
+  it("/v1/rules: regra isenção SE aprovada passa a valer no cálculo", async () => {
+    // SE interna hoje → NO_RULE_FOUND (sem alíquota no catálogo)
+    const before = await request(app.getHttpServer())
+      .post("/v1/tax-simulations")
+      .send({
+        correlationId: "e2e-rules-1",
+        context: { issuer: { partyRef: "12345678000199" } }, // RJ (normal)
+        items: [{ unitPrice: { amount: 100000 } }],
+      })
+      .expect(201);
+    expect(before.body.items[0].taxes[0].outcome).toBe("TAXED"); // RJ 20%
+
+    // cria proposta de isenção para SE, aprova e ativa
+    const created = await request(app.getHttpServer())
+      .post("/v1/rules")
+      .send({
+        tribute: "ICMS",
+        name: "Isenção interna SE (e2e)",
+        jurisdiction: { scope: "STATE", code: "SE" },
+        condition: { kind: "and", children: [
+          { kind: "predicate", predicate: "isInternal" },
+          { kind: "predicate", predicate: "issuerStateIs", args: { uf: "SE" } },
+          { kind: "predicate", predicate: "regimeIs", args: { regime: "NORMAL" } },
+        ] },
+        effects: [{ type: "exempt" }],
+        validFrom: "2026-01-01",
+        legalBasis: { documentType: "REGULAMENTO_ESTADUAL", number: "RICMS", year: "SE" },
+      })
+      .expect(201);
+    const ruleId = created.body.rule.id;
+
+    for (const to of ["REVIEW", "APPROVED", "ACTIVE"]) {
+      await request(app.getHttpServer())
+        .post(`/v1/rules/${ruleId}/transitions`)
+        .send({ version: 1, to, actor: "HUMAN" })
+        .expect(201);
+    }
+
+    // simulação com emissor SE: isenção aplicada com fundamento
+    const seParty = await request(app.getHttpServer())
+      .post("/v1/parties")
+      .send({
+        taxId: "99999999000199",
+        legalName: "Empresa Sergipana",
+        type: "COMPANY",
+        establishments: [{ address: { state: "SE" }, taxRegimes: [{ regime: "NORMAL", validFrom: "2020-01-01" }] }],
+      })
+      .expect(201);
+
+    const after = await request(app.getHttpServer())
+      .post("/v1/tax-simulations")
+      .send({
+        correlationId: "e2e-rules-2",
+        context: { issuer: { partyRef: "99999999000199" } },
+        items: [{ unitPrice: { amount: 100000 } }],
+      })
+      .expect(201);
+    const icms = after.body.items[0].taxes[0];
+    expect(icms.outcome).toBe("EXEMPT");
+    expect(icms.legalBases.join(" ")).toMatch(/SE/);
+  });
+
+  it("condição inválida em /v1/rules → 400 CONDITION_INVALID", async () => {
+    await request(app.getHttpServer())
+      .post("/v1/rules")
+      .send({
+        tribute: "ICMS",
+        name: "quebrada",
+        jurisdiction: { scope: "FEDERAL" },
+        condition: { kind: "predicate", predicate: "naoExiste" },
+        effects: [{ type: "applyRate", rateBp: 100 }],
+        validFrom: "2026-01-01",
       })
       .expect(400);
   });

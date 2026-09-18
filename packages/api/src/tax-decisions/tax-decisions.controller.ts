@@ -4,8 +4,11 @@ import { ENGINE_VERSION } from "@tributax/domain";
 import type { TaxDecision } from "@tributax/domain";
 import { mapRequest, PayloadValidationError, type Inference } from "./tax-decision.mapper.js";
 import { InMemoryDecisionStore, type DecisionStore } from "./decision-store.js";
-import { GeneratedRuleSource, resolveIcms, type RuleSource } from "./rule-source.js";
-import { defaultPartyStore, issuerProfileAt, PARTY_STORE, type IssuerProfile, type PartyStore } from "../parties/parties.controller.js";
+import { resolveIcms, type RuleSource } from "./rule-source.js";
+import { defaultPartyStore, issuerProfileAt, PARTY_STORE } from "../parties/parties.controller.js";
+import { defaultRuleCatalog, RULE_CATALOG } from "../rules/rule-admin.controller.js";
+import type { IssuerProfile, PartyStore } from "../parties/parties.controller.js";
+import type { RuleCatalogStore } from "../rules/rule-admin.controller.js";
 import type { TaxCalculationRequest } from "./tax-decision.request.js";
 
 /**
@@ -29,9 +32,10 @@ export class TaxDecisionsController {
     @Optional() @Inject(DECISION_STORE) store?: DecisionStore,
     @Optional() @Inject(RULE_SOURCE) ruleSource?: RuleSource,
     @Optional() @Inject(PARTY_STORE) partyStore?: PartyStore,
+    @Optional() @Inject(RULE_CATALOG) catalog?: RuleCatalogStore,
   ) {
     this.store = store ?? new InMemoryDecisionStore();
-    this.ruleSource = ruleSource ?? new GeneratedRuleSource();
+    this.ruleSource = ruleSource ?? catalog ?? defaultRuleCatalog;
     this.partyStore = partyStore ?? defaultPartyStore;
   }
 

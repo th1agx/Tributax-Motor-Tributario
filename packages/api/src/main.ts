@@ -9,6 +9,8 @@ import type { RuleSource } from "./tax-decisions/rule-source.js";
 import type { TaxCalculationResponse } from "./tax-decisions/tax-decisions.controller.js";
 import { PartiesController, InMemoryPartyStore, PARTY_STORE } from "./parties/parties.controller.js";
 import type { Party, PartyStore } from "./parties/parties.controller.js";
+import { RulesAdminController, RULE_CATALOG, defaultRuleCatalog } from "./rules/rule-admin.controller.js";
+import type { RuleCatalogStore } from "./rules/rule-admin.controller.js";
 
 /**
  * Composição (ADR-002): main é o único lugar que conhece adapters concretos.
@@ -19,9 +21,10 @@ async function bootstrap(): Promise<void> {
   let store: DecisionStore = new InMemoryDecisionStore();
   let ruleSource: RuleSource = new GeneratedRuleSource();
   let partyStore: PartyStore = new InMemoryPartyStore();
+  let ruleCatalog: RuleCatalogStore = defaultRuleCatalog;
 
   if (process.env.DATABASE_URL) {
-    const { PostgresDecisionStore, PostgresRuleSource, PostgresPartyStore } = await import("@tributax/infrastructure");
+    const { PostgresDecisionStore, PostgresRuleSource, PostgresPartyStore, PostgresRuleAdminStore } = await import("@tributax/infrastructure");
     const url = process.env.DATABASE_URL;
     const probe = new PostgresRuleSource(url);
     try {
@@ -34,6 +37,7 @@ async function bootstrap(): Promise<void> {
       store = new PostgresDecisionStoreAdapter(PostgresDecisionStore, url);
       ruleSource = probe;
       partyStore = new PostgresPartyStoreAdapter(PostgresPartyStore, url);
+      ruleCatalog = new PostgresRuleAdminStore(url);
     } catch (e) {
       console.warn(
         `[tributax] Postgres inacessível (${(e as Error).message ?? e}) — ` +
@@ -45,11 +49,12 @@ async function bootstrap(): Promise<void> {
 
   const app = await NestFactory.create({
     module: TaxDecisionsModule,
-    controllers: [PartiesController],
+    controllers: [PartiesController, RulesAdminController],
     providers: [
       { provide: DECISION_STORE, useValue: store },
       { provide: RULE_SOURCE, useValue: ruleSource },
       { provide: PARTY_STORE, useValue: partyStore },
+      { provide: RULE_CATALOG, useValue: ruleCatalog },
     ],
   });
   app.enableShutdownHooks();

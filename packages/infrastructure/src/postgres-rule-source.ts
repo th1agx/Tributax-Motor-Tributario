@@ -11,7 +11,7 @@ import { DateRange } from "@tributax/domain";
  * Implementa a interface RuleSource porduck typing (structural typing).
  */
 export class PostgresRuleSource {
-  private readonly db;
+  protected readonly db;
 
   constructor(databaseUrl: string) {
     const pool = new pg.Pool({ connectionString: databaseUrl });
