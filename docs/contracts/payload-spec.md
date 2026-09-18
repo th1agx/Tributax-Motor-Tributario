@@ -82,13 +82,20 @@ Notas:
 
 ```jsonc
 {
-  "kind": "SALE_GOODS | SERVICE_PROVISION | TRANSFER | BONUS | RENTAL |
+  "kind": "SALE_GOODS | SERVICE_PROVISION | TRANSFER | REMITTANCE | RENTAL |
            IMPORT | EXPORT | CONSUMPTION_ASSET | AUTO (default AUTO)",
+  "purpose": "SAMPLE | GIFT | REPAIR | TOLL_MANUFACTURING | OTHER?",
   "fiscalDocumentType": "NFE | NFCE | NFSE | NONE | AUTO (default AUTO)",
   "modality": "IN_PERSON | DELIVERY | SHIPPING | ELECTRONIC? (default por tipo)",
   "payment": { "method": "CASH|CARD|CREDIT|OTHER?", "term": "SPOT|INSTALLMENTS"? }
 }
 ```
+
+Decisão ADR-worthy registrada: casos específicos (amostra grátis, brinde, remessa
+para conserto, industrialização por encomenda) **não** são kinds próprios — usam o
+kind genérico `REMITTANCE` (ou `SALE_GOODS` quando há venda envolvida) com o campo
+`purpose` discriminando a finalidade. Estrutura compartilhada; divergência apenas
+na finalidade fiscal.
 
 Resolução de `AUTO` (registrada como inferência no trace):
 
@@ -149,7 +156,7 @@ Regras:
   "pinClassification": [{ "itemId": "...", "ncm": "...", "serviceCode": "..." }],
   "forbidBenefits": true?,
   "requireFullTrace": true?,
-  "chargeAllocation": "PROPORTIONAL | SPECIFIED",  // frete/seguro/acessórias
+  "chargeAllocation": "PROPORTIONAL (default) | SPECIFIED",  // frete/seguro/acessórias
   "roundingPolicy": "ROUND_HALF_UP | FLOOR | CENTRAL_ITEM_LAST"?
 }
 ```
@@ -264,13 +271,65 @@ Estados semanticamente distintos (nunca "sem regra = zero"):
 
 ---
 
-## 12. Pendências para fechar a v1 do contrato
+## 12. Decisões fechadas (ex-pendências)
 
-1. Confirmar enumeração final de `operation.kind` (cases: amostra grátis, brinde,
-   remessa p/ conserto, industrialização por encomenda — viram kinds próprios ou
-   flags?).
-2. Definir política de frete/seguro/acessórias padrão (§6 `chargeAllocation`).
-3. Definir contrato de `/v1/parties` (perfil: regimes, CNAEs, endereços, contabilidade).
-4. Confirmar se NFS-e inclui retenções federais na v1 do contrato ou fase seguinte.
-5. Decidir tipos de documento fora do escopo inicial (CT-e, MDF-e) — apenas
-   registrar que o schema os comporta via `fiscalDocumentType` extensível.
+1. **`operation.kind` com `purpose`** — casos especiais modelados como `REMITTANCE`
+   (+ `purpose`), não kinds próprios (ver §4).
+2. **`chargeAllocation` default = `PROPORTIONAL`** — frete/seguro/acessórias entram
+   na base proporcionalmente ao valor de cada item; `SPECIFIED` exige os valores
+   por item.
+3. **Contrato de `/v1/parties`** — ver §13.
+4. **Retenções na v1 do NFS-e:** IRRF e CSRF calculados desde a v1 (dor central do
+   prestador pessoa jurídica); INSS fica para fase seguinte (depende de código de
+   obra e regras previdenciárias específicas de retenção).
+5. **CT-e / MDF-e:** fora do escopo inicial. `fiscalDocumentType` é extensível por
+   design; nenhuma modelagem agora.
+
+---
+
+## 13. Contrato de `/v1/parties` (perfil de partes)
+
+Cadastro e versionamento temporal dos perfis referenciados pelo payload de cálculo.
+
+### Recursos
+
+```
+POST   /v1/parties                      — cria perfil
+GET    /v1/parties/{id}                 — perfil vigente
+GET    /v1/parties/{id}?asOf=2026-01-15 — perfil na data
+PATCH  /v1/parties/{id}                 — altera com vigência (gera nova versão)
+GET    /v1/parties/{id}/history         — linhagem de versões
+```
+
+### Estrutura do perfil
+
+```jsonc
+{
+  "id": "string",
+  "taxId": "CNPJ/CPF",
+  "legalName": "...", "tradeName": "...?",
+  "type": "COMPANY | INDIVIDUAL_ENTREPRENEUR | INDIVIDUAL | MEI",
+  "establishments": [{
+    "id": "...",
+    "address": { "country": "BR", "state": "MG", "city": "...", "cityIbgeCode": "..." },
+    "cnae": "string (principal)", "cnaeSecondary": ["..."],
+    "taxRegimes": [{
+      "regime": "NORMAL | SIMPLES_NACIONAL | MEI | LUCRO_PRESUMIDO | LUCRO_REAL",
+      "validFrom": "date", "validTo": "date?"
+    }],
+    "municipalRegistration": "string?"   // inscrição municipal — exigido p/ NFS-e
+  }],
+  "accounting": {                      // opcional, melhora precisão de retenções
+    "isWithholdingAgent": true?,
+    "incentiveRegimes": ["..."]?
+  }
+}
+```
+
+### Invariantes
+
+- Regimes tributários são **intervalos temporais** disjuntos — o cálculo de uma
+  operação datada usa o regime vigente na data da operação, não o atual.
+- Emitente de NFS-e exige inscrição municipal no estabelecimento.
+- Alterações geram versão nova com auditoria (quem, quando, justificativa);
+  histórico nunca é sobrescrito.
