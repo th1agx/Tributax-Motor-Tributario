@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "start": "npm run start --workspace=@tributax/api",
     "test": "npm run test --workspace=@tributax/domain && npm run test --workspace=@tributax/api && npm run test --workspace=@tributax/infrastructure",
     "build": "npm run build --workspace=@tributax/domain && npm run build --workspace=@tributax/infrastructure && npm run build --workspace=@tributax/api"
   },
