@@ -7,27 +7,34 @@ import type { DecisionStore } from "./tax-decisions/decision-store.js";
 import { GeneratedRuleSource } from "./tax-decisions/rule-source.js";
 import type { RuleSource } from "./tax-decisions/rule-source.js";
 import type { TaxCalculationResponse } from "./tax-decisions/tax-decisions.controller.js";
+import { PartiesController, InMemoryPartyStore, PARTY_STORE } from "./parties/parties.controller.js";
+import type { Party, PartyStore } from "./parties/parties.controller.js";
 
 /**
  * Composição (ADR-002): main é o único lugar que conhece adapters concretos.
- * Com DATABASE_URL, decisões e regras vêm do Postgres; sem ele, in-memory
- * + catálogo gerado em código (fallback de desenvolvimento).
+ * Com DATABASE_URL, decisões/regras/partes vêm do Postgres; sem ele,
+ * in-memory + catálogo gerado em código (fallback de desenvolvimento).
  */
 async function bootstrap(): Promise<void> {
   let store: DecisionStore = new InMemoryDecisionStore();
   let ruleSource: RuleSource = new GeneratedRuleSource();
+  let partyStore: PartyStore = new InMemoryPartyStore();
 
   if (process.env.DATABASE_URL) {
-    const { PostgresDecisionStore, PostgresRuleSource } = await import("@tributax/infrastructure");
-    store = new PostgresDecisionStoreAdapter(PostgresDecisionStore, process.env.DATABASE_URL);
-    ruleSource = new PostgresRuleSource(process.env.DATABASE_URL);
+    const { PostgresDecisionStore, PostgresRuleSource, PostgresPartyStore } = await import("@tributax/infrastructure");
+    const url = process.env.DATABASE_URL;
+    store = new PostgresDecisionStoreAdapter(PostgresDecisionStore, url);
+    ruleSource = new PostgresRuleSource(url);
+    partyStore = new PostgresPartyStoreAdapter(PostgresPartyStore, url);
   }
 
   const app = await NestFactory.create({
     module: TaxDecisionsModule,
+    controllers: [PartiesController],
     providers: [
       { provide: DECISION_STORE, useValue: store },
       { provide: RULE_SOURCE, useValue: ruleSource },
+      { provide: PARTY_STORE, useValue: partyStore },
     ],
   });
   app.enableShutdownHooks();
@@ -66,6 +73,32 @@ class PostgresDecisionStoreAdapter implements DecisionStore {
   async findById(decisionId: string): Promise<TaxCalculationResponse | undefined> {
     const row = await this.inner.findById(decisionId);
     return row?.response as TaxCalculationResponse | undefined;
+  }
+}
+
+/** Concilia o port PartyStore com o adapter de infra (perfil em JSONB). */
+class PostgresPartyStoreAdapter implements PartyStore {
+  private readonly inner;
+
+  constructor(
+    inner: new (url: string) => {
+      save: (p: { id?: string; taxId: string; legalName: string; type: string; establishments: readonly unknown[] }) =>
+        Promise<{ id: string } & Record<string, unknown>>;
+      findByIdOrTaxId: (ref: string) => Promise<Record<string, unknown> | undefined>;
+    },
+    url: string,
+  ) {
+    this.inner = new inner(url);
+  }
+
+  async save(party: Party): Promise<Party> {
+    const saved = await this.inner.save(party);
+    return { ...party, id: saved.id };
+  }
+
+  async findByIdOrTaxId(ref: string): Promise<Party | undefined> {
+    const row = await this.inner.findByIdOrTaxId(ref);
+    return row as Party | undefined;
   }
 }
 

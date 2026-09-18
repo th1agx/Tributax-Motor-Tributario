@@ -5,6 +5,7 @@ import type { TaxDecision } from "@tributax/domain";
 import { mapRequest, PayloadValidationError, type Inference } from "./tax-decision.mapper.js";
 import { InMemoryDecisionStore, type DecisionStore } from "./decision-store.js";
 import { GeneratedRuleSource, resolveIcms, type RuleSource } from "./rule-source.js";
+import { defaultPartyStore, issuerProfileAt, PARTY_STORE, type IssuerProfile, type PartyStore } from "../parties/parties.controller.js";
 import type { TaxCalculationRequest } from "./tax-decision.request.js";
 
 /**
@@ -13,22 +14,25 @@ import type { TaxCalculationRequest } from "./tax-decision.request.js";
  * em código por default; Postgres em produção via main.ts).
  * Emissor de teste fixo (MG/NORMAL) até o contexto Party existir.
  */
-const ISSUER_DEFAULTS = { state: "MG" as const, regime: "NORMAL" as const };
-
 export const DECISION_STORE = "DECISION_STORE";
 export const RULE_SOURCE = "RULE_SOURCE";
+
+const ISSUER_DEFAULTS: IssuerProfile = { state: "MG", regime: "NORMAL" };
 
 @Controller("/v1")
 export class TaxDecisionsController {
   private readonly store: DecisionStore;
   private readonly ruleSource: RuleSource;
+  private readonly partyStore: PartyStore;
 
   constructor(
     @Optional() @Inject(DECISION_STORE) store?: DecisionStore,
     @Optional() @Inject(RULE_SOURCE) ruleSource?: RuleSource,
+    @Optional() @Inject(PARTY_STORE) partyStore?: PartyStore,
   ) {
     this.store = store ?? new InMemoryDecisionStore();
     this.ruleSource = ruleSource ?? new GeneratedRuleSource();
+    this.partyStore = partyStore ?? defaultPartyStore;
   }
 
   @Post("tax-decisions")
@@ -62,7 +66,30 @@ export class TaxDecisionsController {
     if (!req?.correlationId) {
       throw new PayloadValidationError("correlationId é obrigatório");
     }
-    const mapped = mapRequest(req, ISSUER_DEFAULTS);
+    // Emissor: perfil da parte referenciada (regime vigente na data) ou default.
+    const asOf = req.asOfDate ? new Date(req.asOfDate) : new Date();
+    let issuer = ISSUER_DEFAULTS;
+    const inferences: Inference[] = [];
+    const partyRef = req.context?.issuer?.partyRef;
+    if (partyRef) {
+      const party = await this.partyStore.findByIdOrTaxId(partyRef);
+      if (!party) {
+        throw new PayloadValidationError(`emissor não encontrado: ${partyRef}`);
+      }
+      const profile = issuerProfileAt(party, asOf);
+      if (!profile) {
+        throw new PayloadValidationError(
+          `emissor ${partyRef} sem regime vigente em ${asOf.toISOString().slice(0, 10)}`,
+        );
+      }
+      issuer = profile;
+      inferences.push({
+        field: "context.issuer",
+        value: `${profile.state}/${profile.regime}`,
+        evidence: `perfil ${party.taxId} — regime vigente na data da operação`,
+      });
+    }
+    const mapped = mapRequest(req, issuer);
     const result = await resolveIcms(mapped.ctx, this.ruleSource);
 
     const taxes: TaxItem[] = [toTaxItem("ICMS", result.icms)];
@@ -83,7 +110,7 @@ export class TaxDecisionsController {
       items: [{ itemId: "*", taxes }],
       totals: taxes.reduce<{ tax: string; amountCents: number }[]>((acc, t) =>
         t.amountCents !== undefined ? [...acc, { tax: t.tax, amountCents: t.amountCents }] : acc, []),
-      inferences: mapped.inferences,
+      inferences: [...inferences, ...mapped.inferences],
       warnings: result.icms.warnings,
       errors: [],
       ...(req.options?.detailLevel === "FULL_TRACE" ? { trace: result.icms.trace } : {}),

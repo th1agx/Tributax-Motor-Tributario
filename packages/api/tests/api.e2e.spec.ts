@@ -5,13 +5,14 @@ import type { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { ExpressAdapter } from "@nestjs/platform-express";
 import { TaxDecisionsController } from "../src/tax-decisions/tax-decisions.controller.js";
+import { PartiesController } from "../src/parties/parties.controller.js";
 
 describe("API e2e — /v1/tax-decisions", () => {
   let app: INestApplication;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      controllers: [TaxDecisionsController],
+      controllers: [TaxDecisionsController, PartiesController],
     }).compile();
     app = moduleRef.createNestApplication(new ExpressAdapter());
     await app.init();
@@ -91,6 +92,62 @@ describe("API e2e — /v1/tax-decisions", () => {
 
     await request(app.getHttpServer())
       .get("/v1/tax-decisions/00000000-0000-4000-8000-000000000000")
+      .expect(400);
+  });
+
+  it("/v1/parties: emissor real RJ/Normal calcula 20% interno; asOf antigo usa Simples (sem regra → NO_RULE_FOUND)", async () => {
+    const created = await request(app.getHttpServer())
+      .post("/v1/parties")
+      .send({
+        taxId: "12345678000199",
+        legalName: "Empresa Teste LTDA",
+        type: "COMPANY",
+        establishments: [{
+          address: { state: "RJ" },
+          taxRegimes: [
+            { regime: "SIMPLES_NACIONAL", validFrom: "2020-01-01", validTo: "2025-12-31" },
+            { regime: "NORMAL", validFrom: "2026-01-01" },
+          ],
+        }],
+      })
+      .expect(201);
+    expect(created.body.id).toBeDefined();
+
+    // 2026: RJ Normal → ICMS interno RJ 20%
+    const now = await request(app.getHttpServer())
+      .post("/v1/tax-simulations")
+      .send({
+        correlationId: "e2e-party-1",
+        context: { issuer: { partyRef: "12345678000199" } },
+        items: [{ unitPrice: { amount: 100000 } }],
+      })
+      .expect(201);
+    const taxesNow = Object.fromEntries(now.body.items[0].taxes.map((t: { tax: string; amountCents?: number }) => [t.tax, t.amountCents]));
+    expect(taxesNow.ICMS).toBe(20000);
+    expect(now.body.inferences.map((i: { field: string }) => i.field)).toContain("context.issuer");
+
+    // 2024: Simples Nacional → sem regra de ICMS normal (digno de NO_RULE_FOUND)
+    const past = await request(app.getHttpServer())
+      .post("/v1/tax-simulations")
+      .send({
+        correlationId: "e2e-party-2",
+        asOfDate: "2024-06-01",
+        context: { issuer: { partyRef: "12345678000199" } },
+        items: [{ unitPrice: { amount: 100000 } }],
+      })
+      .expect(201);
+    const taxesPast = Object.fromEntries(past.body.items[0].taxes.map((t: { tax: string; outcome: string }) => [t.tax, t.outcome]));
+    expect(taxesPast.ICMS).toBe("NO_RULE_FOUND");
+  });
+
+  it("partyRef inexistente → 400 com diagnóstico", async () => {
+    await request(app.getHttpServer())
+      .post("/v1/tax-simulations")
+      .send({
+        correlationId: "e2e-party-3",
+        context: { issuer: { partyRef: "00000000000000" } },
+        items: [{ unitPrice: { amount: 1000 } }],
+      })
       .expect(400);
   });
 });
