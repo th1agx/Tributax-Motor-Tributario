@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-09-18T09:00:00Z",
+  "observations": [
+    {
+      "ruleId": "ICMS-INT-MG",
+      "tribute": "ICMS",
+      "jurisdictionCode": "MG",
+      "rateBp": 1900,
+      "validFrom": "2026-10-01",
+      "sources": [
+        {
+          "url": "https://www.sefaz.mg.gov.br/exemplo-decreto",
+          "publishedAt": "2026-09-10T00:00:00Z",
+          "excerpt": "Decreto altera a alíquota interna do ICMS-MG para 19% a partir de 01/10/2026."
+        }
+      ],
+      "confidence": 0.85,
+      "notes": "EXEMPLO — relatório fictício para demonstração do agente"
+    },
+    {
+      "tribute": "ICMS",
+      "jurisdictionCode": "SE",
+      "rateBp": 1800,
+      "validFrom": "2026-01-01",
+      "sources": [
+        {
+          "url": "https://www.sefaz.se.gov.br/exemplo-ricms",
+          "publishedAt": "2026-09-12T00:00:00Z",
+          "excerpt": "RICMS/SE praticaria 18% interno — UF sem cobertura no catálogo."
+        }
+      ],
+      "confidence": 0.6,
+      "notes": "EXEMPLO — demonstra alerta de lacuna de catálogo"
+    }
+  ]
+}
