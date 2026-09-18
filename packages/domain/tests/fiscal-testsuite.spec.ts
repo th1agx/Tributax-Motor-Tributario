@@ -13,7 +13,9 @@ describe("Fiscal Test Suite — ICMS (regressão como dado)", () => {
       }
       if (result.icms.outcome.kind === "TAXED") {
         expect(result.icms.outcome.amountCents).toBe(e.icmsAmountCents);
-        expect(result.icms.outcome.rateBp).toBe(e.icmsRateBp);
+        if (e.icmsRateBp !== undefined) {
+          expect(result.icms.outcome.rateBp).toBe(e.icmsRateBp);
+        }
       }
 
       expect(result.difal !== undefined).toBe(e.hasDifal ?? false);
@@ -21,6 +23,13 @@ describe("Fiscal Test Suite — ICMS (regressão como dado)", () => {
         expect(result.difal.outcome.amountCents).toBe(e.difalAmountCents);
         expect(result.difal.split.originCents).toBe(e.difalOriginCents);
         expect(result.difal.split.destinationCents).toBe(e.difalDestinationCents);
+      }
+
+      if (e.fcpAmountCents !== undefined) {
+        expect(result.fcp).toBeDefined();
+        expect(result.fcp?.outcome).toMatchObject({ amountCents: e.fcpAmountCents });
+      } else if (e.hasDifal === false) {
+        expect(result.fcp).toBeUndefined();
       }
     });
   }

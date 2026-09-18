@@ -18,6 +18,7 @@ export interface IcmsTestCase {
     readonly difalOriginCents?: number;
     readonly difalDestinationCents?: number;
     readonly hasDifal?: boolean;
+    readonly fcpAmountCents?: number;
   };
   readonly legalBasis: string;
   readonly effectiveFrom: string;
@@ -59,8 +60,9 @@ export const ICMS_CASES: readonly IcmsTestCase[] = [
       difalAmountCents: 6000,
       difalOriginCents: 1200,
       difalDestinationCents: 4800,
+      fcpAmountCents: 2000,
     },
-    legalBasis: "Res. SF 22/89 art. 1º; LC 190/22 (LC 87/96 art. 99 §2º)",
+    legalBasis: "Res. SF 22/89 art. 1º; LC 190/22 (LC 87/96 art. 99 §2º); LC 87/96 art. 82-A",
     effectiveFrom: "2026-01-01",
   },
   {
@@ -81,8 +83,9 @@ export const ICMS_CASES: readonly IcmsTestCase[] = [
       difalAmountCents: 11000,
       difalOriginCents: 2200,
       difalDestinationCents: 8800,
+      fcpAmountCents: 2000,
     },
-    legalBasis: "Res. SF 22/89 art. 2º; LC 190/22",
+    legalBasis: "Res. SF 22/89 art. 2º; LC 190/22; LC 87/96 art. 82-A",
     effectiveFrom: "2026-01-01",
   },
   {
@@ -113,6 +116,43 @@ export const ICMS_CASES: readonly IcmsTestCase[] = [
     }),
     expect: { icmsAmountCents: 12000, icmsRateBp: 1200, hasDifal: false },
     legalBasis: "Res. SF 22/89 art. 1º",
+    effectiveFrom: "2026-01-01",
+  },
+  {
+    id: "ICMS-CASE-006",
+    name: "MG → PA consumidor final: ICMS 12%, DIFAL 5% (20/80), FCP-PA 2%",
+    given: makeCtx({
+      ...base,
+      issuerState: "MG",
+      recipientState: "PA",
+      recipientRole: "FINAL_CONSUMER",
+      regime: "NORMAL",
+      items: [{ id: "1", description: "Produto", quantity: 1, unitPriceCents: 100000 }],
+    }),
+    expect: {
+      icmsAmountCents: 12000,
+      hasDifal: true,
+      difalAmountCents: 5000,
+      difalOriginCents: 1000,
+      difalDestinationCents: 4000,
+      fcpAmountCents: 2000,
+    },
+    legalBasis: "Res. SF 22/89 art. 1º; LC 190/22; LC 87/96 art. 82-A (FCP-PA NEEDS_REVIEW)",
+    effectiveFrom: "2026-01-01",
+  },
+  {
+    id: "ICMS-CASE-007",
+    name: "Operação interna MG: sem DIFAL e sem FCP (MG não cobra FCP geral)",
+    given: makeCtx({
+      ...base,
+      issuerState: "MG",
+      recipientState: "MG",
+      recipientRole: "FINAL_CONSUMER",
+      regime: "NORMAL",
+      items: [{ id: "1", description: "Produto", quantity: 1, unitPriceCents: 100000 }],
+    }),
+    expect: { icmsAmountCents: 18000, hasDifal: false },
+    legalBasis: "RICMS-MG (NEEDS_REVIEW); LC 87/96 art. 82-A",
     effectiveFrom: "2026-01-01",
   },
 ];
