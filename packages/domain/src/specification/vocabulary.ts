@@ -1,5 +1,6 @@
-import type { FiscalContext, RecipientRole, OperationKind, FiscalDocumentType, TaxRegime, MerchandiseOrigin, OperationPurpose } from "../decision/fiscal-context.js";
+import type { FiscalContext, RecipientRole, OperationKind, FiscalDocumentType, TaxRegime, MerchandiseOrigin, OperationPurpose, Uf } from "../decision/fiscal-context.js";
 import { isInterstate } from "../decision/fiscal-context.js";
+import { REGION_OF, type Region } from "../tribute/regions.js";
 import { Predicate } from "./spec.js";
 
 /**
@@ -33,8 +34,10 @@ const registry: Record<string, PredicateEvaluator> = {
   purposeIs: (ctx, a) => ctx.purpose === (expectString(a, "purpose") as OperationPurpose),
   fiscalDocumentTypeIs: (ctx, a) => ctx.fiscalDocumentType === (expectString(a, "type") as FiscalDocumentType),
   regimeIs: (ctx, a) => ctx.regime === (expectString(a, "regime") as TaxRegime),
-  issuerStateIs: (ctx, a) => ctx.issuerState === expectString(a, "uf"),
-  recipientStateIs: (ctx, a) => ctx.recipientState === expectString(a, "uf"),
+  issuerStateIs: (ctx, a) => ctx.issuerState === (expectString(a, "uf") as Uf),
+  recipientStateIs: (ctx, a) => ctx.recipientState === (expectString(a, "uf") as Uf),
+  issuerRegionIs: (ctx, a) => REGION_OF[ctx.issuerState] === (expectString(a, "region") as Region),
+  recipientRegionIs: (ctx, a) => REGION_OF[ctx.recipientState] === (expectString(a, "region") as Region),
   /** NCM de qualquer item começa com o prefixo (capítulo). */
   ncmStartsWith: (ctx, a) => {
     const prefix = expectString(a, "prefix");

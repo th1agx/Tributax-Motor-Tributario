@@ -37,7 +37,13 @@ export interface TaxRule {
   readonly validity: DateRange;
   readonly status: RuleStatus;
   readonly legalBasis?: LegalBasisRef;
-  readonly origin: "LEGISLATION" | "MANUAL" | "IMPORTED";
+  readonly origin: "LEGISLATION" | "MANUAL" | "IMPORTED" | "AI_SUGGESTED";
+  /**
+   * Incerteza normativa declarada (payload-spec/§regra 44): regra com
+   * reviewReason NÃO é suposição silenciosa — é fila de verificação
+   * (prioridade para o LegislationWatch, ADR-012).
+   */
+  readonly reviewReason?: string;
 }
 
 export const ENGINE_VERSION = "0.1.0-phase0";
