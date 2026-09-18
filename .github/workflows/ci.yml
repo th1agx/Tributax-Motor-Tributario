@@ -63,6 +63,9 @@ jobs:
           sudo apt-get update && sudo apt-get install -y postgresql-client
           psql "$DATABASE_URL" -f packages/infrastructure/drizzle/custom/01_no_overlap.sql
 
+      - name: Build domain (dist para o seed)
+        run: npm run build --workspace=@tributax/domain
+
       - name: Seed rule catalog
         working-directory: packages/infrastructure
         run: npx tsx src/seed.ts
