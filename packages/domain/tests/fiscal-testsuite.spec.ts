@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calculateIcms } from "../src/tribute/icms.js";
 import { calculatePisCofins } from "../src/tribute/pis-cofins.js";
+import { calculateIssRetentions } from "../src/tribute/iss-retencoes.js";
 import { ICMS_CASES } from "./fiscal-testsuite/icms-cases.js";
 
 describe("Fiscal Test Suite — ICMS (regressão como dado)", () => {
@@ -17,6 +18,19 @@ describe("Fiscal Test Suite — ICMS (regressão como dado)", () => {
         } else {
           expect(federal.pis.outcome).toMatchObject({ amountCents: e.pisAmountCents });
           expect(federal.cofins.outcome).toMatchObject({ amountCents: e.cofinsAmountCents });
+        }
+        return;
+      }
+
+      // Retenções (casos RETENCAO-*) — decididos pelo módulo de retenções
+      if (e.irrfOutcomeKind !== undefined || e.irrfAmountCents !== undefined) {
+        const retentions = calculateIssRetentions(testCase.given);
+        if (e.irrfOutcomeKind !== undefined) {
+          expect(retentions.irrf.outcome.kind).toBe(e.irrfOutcomeKind);
+          expect(retentions.csrf.outcome.kind).toBe(e.csrfOutcomeKind ?? e.irrfOutcomeKind);
+        } else {
+          expect(retentions.irrf.outcome).toMatchObject({ amountCents: e.irrfAmountCents });
+          expect(retentions.csrf.outcome).toMatchObject({ amountCents: e.csrfAmountCents });
         }
         return;
       }

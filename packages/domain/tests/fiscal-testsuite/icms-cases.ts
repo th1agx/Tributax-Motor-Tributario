@@ -1,6 +1,7 @@
 import type { FiscalContext } from "../../src/decision/fiscal-context.js";
 import { makeCtx } from "../helpers.js";
 import { calculatePisCofins } from "../../src/tribute/pis-cofins.js";
+import { calculateIssRetentions } from "../../src/tribute/iss-retencoes.js";
 
 /**
  * Fiscal Test Suite (ADR-010) — casos de regressão COMO DADO.
@@ -24,6 +25,10 @@ export interface IcmsTestCase {
     readonly cofinsOutcomeKind?: string;
     readonly pisAmountCents?: number;
     readonly cofinsAmountCents?: number;
+    readonly irrfOutcomeKind?: string;
+    readonly csrfOutcomeKind?: string;
+    readonly irrfAmountCents?: number;
+    readonly csrfAmountCents?: number;
   };
   readonly legalBasis: string;
   readonly effectiveFrom: string;
@@ -182,6 +187,48 @@ export const ICMS_CASES: readonly IcmsTestCase[] = [
     given: makeCtx({ ...base, regime: "SIMPLES_NACIONAL" }),
     expect: { pisOutcomeKind: "NO_RULE_FOUND", cofinsOutcomeKind: "NO_RULE_FOUND" },
     legalBasis: "LC 123/2006 — tributos unificados no DAS (alíquota por anexo: fase futura)",
+    effectiveFrom: "2026-01-01",
+  },
+  {
+    id: "RETENCAO-CASE-001",
+    name: "Serviço PJ → PJ (regime Normal): IRRF 1,5% + CSRF 4,65%",
+    given: makeCtx({
+      operationKind: "SERVICE_PROVISION",
+      fiscalDocumentType: "NFSE",
+      recipientRole: "CONTRIBUTOR",
+      regime: "NORMAL",
+      items: [{ id: "1", description: "Consultoria", quantity: 1, unitPriceCents: 200000, serviceCode: "1.05" }],
+    }),
+    expect: { irrfAmountCents: 3000, csrfAmountCents: 9300 },
+    legalBasis: "Lei 9.430/96 art. 67 (NEEDS_REVIEW); Lei 10.833/03 arts. 30 e 36",
+    effectiveFrom: "2026-01-01",
+  },
+  {
+    id: "RETENCAO-CASE-002",
+    name: "Serviço prestado por MEI: sem retenção federal e ISS fixo no DAS-MEI (sem regra por operação)",
+    given: makeCtx({
+      operationKind: "SERVICE_PROVISION",
+      fiscalDocumentType: "NFSE",
+      recipientRole: "CONTRIBUTOR",
+      regime: "MEI",
+      items: [{ id: "1", description: "Consultoria", quantity: 1, unitPriceCents: 200000, serviceCode: "1.05" }],
+    }),
+    expect: { irrfOutcomeKind: "NO_RULE_FOUND", csrfOutcomeKind: "NO_RULE_FOUND" },
+    legalBasis: "LC 123/2006 art. 18 §5º? (MEI — isenções; verificar) — ISS em valor fixo no DAS-MEI",
+    effectiveFrom: "2026-01-01",
+  },
+  {
+    id: "RETENCAO-CASE-003",
+    name: "Serviço para consumidor final: sem retenção (tomador não é PJ)",
+    given: makeCtx({
+      operationKind: "SERVICE_PROVISION",
+      fiscalDocumentType: "NFSE",
+      recipientRole: "FINAL_CONSUMER",
+      regime: "NORMAL",
+      items: [{ id: "1", description: "Consultoria", quantity: 1, unitPriceCents: 200000, serviceCode: "1.05" }],
+    }),
+    expect: { irrfOutcomeKind: "NO_RULE_FOUND", csrfOutcomeKind: "NO_RULE_FOUND" },
+    legalBasis: "retenções exigem tomador PJ (Lei 10.833/03 art. 30)",
     effectiveFrom: "2026-01-01",
   },
 ];

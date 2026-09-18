@@ -5,3 +5,4 @@ export * from "./monitoring/index.js";
 export * from "./tribute/icms.js";
 export * from "./tribute/regions.js";
 export * from "./tribute/pis-cofins.js";
+export * from "./tribute/iss-retencoes.js";

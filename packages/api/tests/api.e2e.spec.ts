@@ -240,4 +240,32 @@ describe("API e2e — /v1/tax-decisions", () => {
     const ui = await request(app.getHttpServer()).get("/docs").expect(200);
     expect(ui.text).toMatch(/swagger-ui/i);
   });
+
+  it("jornada do MEI: serviço inferido como NFSE sem retenção federal (DAS-MEI)", async () => {
+    await request(app.getHttpServer())
+      .post("/v1/parties")
+      .send({
+        taxId: "12345678901234",
+        legalName: "MEI Teste",
+        type: "MEI",
+        establishments: [{ address: { state: "MG" }, taxRegimes: [{ regime: "MEI", validFrom: "2020-01-01" }] }],
+      })
+      .expect(201);
+
+    // prestador MEI → tomador PJ identificado (role AUTO → CONTRIBUTOR)
+    const decision = await request(app.getHttpServer())
+      .post("/v1/tax-simulations")
+      .send({
+        correlationId: "e2e-mei-2",
+        context: { issuer: { partyRef: "12345678901234" }, recipient: { partyRef: "22222222000191" } },
+        items: [{ description: "Consultoria", unitPrice: { amount: 200000 }, classification: { serviceCode: "1.05" } }],
+      })
+      .expect(201);
+
+    expect(decision.body.fiscalDocumentType).toBe("NFSE");
+    expect(decision.body.operationKind).toBe("SERVICE_PROVISION");
+    const taxes = Object.fromEntries(decision.body.items[0].taxes.map((t: { tax: string; outcome: string }) => [t.tax, t.outcome]));
+    expect(taxes.IRRF).toBe("NO_RULE_FOUND"); // MEI não sofre retenção
+    expect(taxes.CSRF).toBe("NO_RULE_FOUND");
+  });
 });
