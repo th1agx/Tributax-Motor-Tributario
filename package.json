@@ -1,0 +1,17 @@
+{
+  "name": "tributax",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tributax — motor de decisão tributária brasileiro",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspace=@tributax/domain",
+    "build": "npm run build --workspace=@tributax/domain"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
