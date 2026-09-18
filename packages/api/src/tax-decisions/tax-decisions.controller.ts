@@ -1,30 +1,40 @@
-import { BadGatewayException, BadRequestException, Body, Controller, Get, Module, Param, Post } from "@nestjs/common";
+import { BadGatewayException, BadRequestException, Body, Controller, Get, Inject, Module, Optional, Param, Post } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
-import { calculateIcms, ENGINE_VERSION } from "@tributax/domain";
+import { ENGINE_VERSION } from "@tributax/domain";
 import type { TaxDecision } from "@tributax/domain";
 import { mapRequest, PayloadValidationError, type Inference } from "./tax-decision.mapper.js";
 import { InMemoryDecisionStore, type DecisionStore } from "./decision-store.js";
+import { GeneratedRuleSource, resolveIcms, type RuleSource } from "./rule-source.js";
 import type { TaxCalculationRequest } from "./tax-decision.request.js";
 
 /**
  * /v1/tax-decisions e /v1/tax-simulations — mesmo cálculo; decision persiste
- * via port DecisionStore (in-memory default; Postgres em produção).
+ * via port DecisionStore e as regras vêm do port RuleSource (catálogo gerado
+ * em código por default; Postgres em produção via main.ts).
  * Emissor de teste fixo (MG/NORMAL) até o contexto Party existir.
  */
 const ISSUER_DEFAULTS = { state: "MG" as const, regime: "NORMAL" as const };
 
+export const DECISION_STORE = "DECISION_STORE";
+export const RULE_SOURCE = "RULE_SOURCE";
+
 @Controller("/v1")
 export class TaxDecisionsController {
   private readonly store: DecisionStore;
+  private readonly ruleSource: RuleSource;
 
-  constructor(store?: DecisionStore) {
+  constructor(
+    @Optional() @Inject(DECISION_STORE) store?: DecisionStore,
+    @Optional() @Inject(RULE_SOURCE) ruleSource?: RuleSource,
+  ) {
     this.store = store ?? new InMemoryDecisionStore();
+    this.ruleSource = ruleSource ?? new GeneratedRuleSource();
   }
 
   @Post("tax-decisions")
   async decide(@Body() req: TaxCalculationRequest): Promise<TaxCalculationResponse> {
     try {
-      const response = this.compute(req);
+      const response = await this.compute(req);
       await this.store.save(response);
       return response;
     } catch (e) {
@@ -33,9 +43,9 @@ export class TaxDecisionsController {
   }
 
   @Post("tax-simulations")
-  simulate(@Body() req: TaxCalculationRequest): TaxCalculationResponse {
+  async simulate(@Body() req: TaxCalculationRequest): Promise<TaxCalculationResponse> {
     try {
-      return this.compute(req);
+      return await this.compute(req);
     } catch (e) {
       throw toHttp(e);
     }
@@ -48,12 +58,12 @@ export class TaxDecisionsController {
     return found;
   }
 
-  private compute(req: TaxCalculationRequest): TaxCalculationResponse {
+  private async compute(req: TaxCalculationRequest): Promise<TaxCalculationResponse> {
     if (!req?.correlationId) {
       throw new PayloadValidationError("correlationId é obrigatório");
     }
     const mapped = mapRequest(req, ISSUER_DEFAULTS);
-    const result = calculateIcms(mapped.ctx);
+    const result = await resolveIcms(mapped.ctx, this.ruleSource);
 
     const taxes: TaxItem[] = [toTaxItem("ICMS", result.icms)];
     if (result.difal) {
@@ -155,5 +165,7 @@ export interface TaxCalculationResponse {
   readonly trace?: unknown;
 }
 
-@Module({ controllers: [TaxDecisionsController] })
+@Module({
+  controllers: [TaxDecisionsController],
+})
 export class TaxDecisionsModule {}

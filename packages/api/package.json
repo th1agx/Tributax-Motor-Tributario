@@ -12,6 +12,7 @@
     "@nestjs/core": "^10.4.0",
     "@nestjs/platform-express": "^10.4.0",
     "@tributax/domain": "*",
+    "@tributax/infrastructure": "*",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0"
   },
