@@ -23,9 +23,24 @@ async function bootstrap(): Promise<void> {
   if (process.env.DATABASE_URL) {
     const { PostgresDecisionStore, PostgresRuleSource, PostgresPartyStore } = await import("@tributax/infrastructure");
     const url = process.env.DATABASE_URL;
-    store = new PostgresDecisionStoreAdapter(PostgresDecisionStore, url);
-    ruleSource = new PostgresRuleSource(url);
-    partyStore = new PostgresPartyStoreAdapter(PostgresPartyStore, url);
+    const probe = new PostgresRuleSource(url);
+    try {
+      // probe de conexão: falha no boot → fallback in-memory com aviso (dev)
+      await probe.loadRules({
+        asOfDate: new Date("1970-01-01T00:00:00Z"), // data que não carrega regras
+        issuerState: "MG", recipientState: "MG", recipientRole: "CONTRIBUTOR",
+        operationKind: "SALE_GOODS", fiscalDocumentType: "NFE", regime: "NORMAL", items: [],
+      });
+      store = new PostgresDecisionStoreAdapter(PostgresDecisionStore, url);
+      ruleSource = probe;
+      partyStore = new PostgresPartyStoreAdapter(PostgresPartyStore, url);
+    } catch (e) {
+      console.warn(
+        `[tributax] Postgres inacessível (${(e as Error).message ?? e}) — ` +
+        "rodando com stores in-memory e catálogo gerado em código. " +
+        "Suba o banco (docker compose up postgres) e reinicie para persistir.",
+      );
+    }
   }
 
   const app = await NestFactory.create({

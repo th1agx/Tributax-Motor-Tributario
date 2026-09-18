@@ -161,7 +161,8 @@ function toHttp(e: unknown): unknown {
   if (e instanceof PayloadValidationError) {
     return new BadRequestException({ error: "PAYLOAD_VALIDATION", message: e.message });
   }
-  return new BadGatewayException({ error: "INTERNAL", message: (e as Error).message });
+  const message = (e as Error)?.message || String(e);
+  return new BadGatewayException({ error: "INTERNAL", message });
 }
 
 export interface TaxItem {
