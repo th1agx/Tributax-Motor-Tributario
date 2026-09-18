@@ -1,25 +1,31 @@
-import { BadGatewayException, BadRequestException, Body, Controller, Module, Post } from "@nestjs/common";
+import { BadGatewayException, BadRequestException, Body, Controller, Get, Module, Param, Post } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import { calculateIcms, ENGINE_VERSION } from "@tributax/domain";
 import type { TaxDecision } from "@tributax/domain";
 import { mapRequest, PayloadValidationError, type Inference } from "./tax-decision.mapper.js";
+import { InMemoryDecisionStore, type DecisionStore } from "./decision-store.js";
 import type { TaxCalculationRequest } from "./tax-decision.request.js";
 
 /**
  * /v1/tax-decisions e /v1/tax-simulations — mesmo cálculo; decision persiste
- * (via port, adapter in-memory na v1), simulation não.
+ * via port DecisionStore (in-memory default; Postgres em produção).
  * Emissor de teste fixo (MG/NORMAL) até o contexto Party existir.
  */
 const ISSUER_DEFAULTS = { state: "MG" as const, regime: "NORMAL" as const };
 
 @Controller("/v1")
 export class TaxDecisionsController {
-  private readonly stored = new Map<string, TaxCalculationResponse>();
+  private readonly store: DecisionStore;
+
+  constructor(store?: DecisionStore) {
+    this.store = store ?? new InMemoryDecisionStore();
+  }
 
   @Post("tax-decisions")
-  decide(@Body() req: TaxCalculationRequest): TaxCalculationResponse {
+  async decide(@Body() req: TaxCalculationRequest): Promise<TaxCalculationResponse> {
     try {
       const response = this.compute(req);
-      this.stored.set(response.decisionId, response);
+      await this.store.save(response);
       return response;
     } catch (e) {
       throw toHttp(e);
@@ -33,6 +39,13 @@ export class TaxDecisionsController {
     } catch (e) {
       throw toHttp(e);
     }
+  }
+
+  @Get("tax-decisions/:id")
+  async findById(@Param("id") id: string): Promise<TaxCalculationResponse> {
+    const found = await this.store.findById(id);
+    if (!found) throw new BadRequestException({ error: "NOT_FOUND", message: `decisão ${id} não encontrada` });
+    return found;
   }
 
   private compute(req: TaxCalculationRequest): TaxCalculationResponse {
@@ -49,7 +62,7 @@ export class TaxDecisionsController {
     }
 
     return {
-      decisionId: `dec_${randomId()}`,
+      decisionId: randomUUID(),
       correlationId: req.correlationId,
       engineVersion: ENGINE_VERSION,
       rulesetHash: result.icms.rulesetHash,
@@ -105,10 +118,6 @@ function legalBasisToString(b: { documentType: string; number: string; year: str
     RESOLUCAO: "Resolução", REGULAMENTO_ESTADUAL: "RICMS", LEI_MUNICIPAL: "Lei Municipal",
   };
   return `${doc[b.documentType] ?? b.documentType} ${b.number}/${b.year}${b.provision ? `, ${b.provision}` : ""}`;
-}
-
-function randomId(): string {
-  return Math.random().toString(36).slice(2, 12);
 }
 
 function toHttp(e: unknown): unknown {

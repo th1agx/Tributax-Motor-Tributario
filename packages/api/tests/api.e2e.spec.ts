@@ -77,4 +77,20 @@ describe("API e2e — /v1/tax-decisions", () => {
       .send({ items: [{ unitPrice: { amount: 1 } }] })
       .expect(400);
   });
+
+  it("decisão persistida é recuperável por id; id inexistente → 400", async () => {
+    const created = await request(app.getHttpServer())
+      .post("/v1/tax-decisions")
+      .send({ correlationId: "e2e-4", items: [{ unitPrice: { amount: 100000 } }] })
+      .expect(201);
+
+    const found = await request(app.getHttpServer())
+      .get(`/v1/tax-decisions/${created.body.decisionId}`)
+      .expect(200);
+    expect(found.body.correlationId).toBe("e2e-4");
+
+    await request(app.getHttpServer())
+      .get("/v1/tax-decisions/00000000-0000-4000-8000-000000000000")
+      .expect(400);
+  });
 });
