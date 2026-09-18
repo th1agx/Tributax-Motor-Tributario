@@ -1,0 +1,376 @@
+openapi: 3.1.0
+info:
+  title: Tributax API
+  version: 0.1.0
+  description: |
+    Motor de decisão tributária brasileiro. Recebe os dados de uma operação
+    comercial e retorna tributos, códigos, bases, alíquotas, fundamentos
+    legais, regras aplicadas/descartadas e inferências — sempre com trace.
+
+    Valores monetários são inteiros em centavos; percentuais em basis points.
+    Documentação de contratos: docs/contracts/payload-spec.md
+servers:
+  - url: http://localhost:3000
+paths:
+  /v1/tax-decisions:
+    post:
+      tags: [decisões]
+      summary: Calcula a tributação e persiste a decisão (com trace auditável)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaxCalculationRequest' }
+            examples:
+              minimo-mei:
+                summary: Payload mínimo (MEI)
+                value:
+                  correlationId: demo-1
+                  items: [{ description: "Produto", unitPrice: { amount: 100000 } }]
+              intermediario:
+                summary: Com destino (DIFAL/FCP)
+                value:
+                  correlationId: demo-2
+                  context: { recipient: { address: { state: SP } } }
+                  items: [{ description: "Produto", unitPrice: { amount: 100000 } }]
+      responses:
+        '201':
+          description: Decisão fiscal
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaxCalculationResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /v1/tax-simulations:
+    post:
+      tags: [decisões]
+      summary: Simula a tributação (mesma resposta; sem persistir obrigação)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaxCalculationRequest' }
+      responses:
+        '201':
+          description: Decisão fiscal (não persistida)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaxCalculationResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /v1/tax-decisions/{id}:
+    get:
+      tags: [decisões]
+      summary: Recupera uma decisão persistida
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Decisão
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaxCalculationResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /v1/parties:
+    post:
+      tags: [parties]
+      summary: Cadastra o perfil de uma parte (emitente/tomador)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Party' }
+      responses:
+        '201':
+          description: Parte criada (com id)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Party' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /v1/parties/{ref}:
+    get:
+      tags: [parties]
+      summary: Consulta uma parte por id ou CNPJ/CPF
+      parameters:
+        - { name: ref, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Parte
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Party' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /v1/rules:
+    post:
+      tags: [regras]
+      summary: Propõe nova regra fiscal (nasce DRAFT; IA propõe AI_SUGGESTED)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RuleDraft' }
+      responses:
+        '201':
+          description: Regra criada em DRAFT
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RuleCreated' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+    get:
+      tags: [regras]
+      summary: Lista o catálogo (todos os status)
+      responses:
+        '200':
+          description: Catálogo
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Rule' }
+  /v1/rules/{id}/transitions:
+    post:
+      tags: [regras]
+      summary: Transiciona status (DRAFT→REVIEW→APPROVED→ACTIVE; IA nunca aprova)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, to]
+              properties:
+                version: { type: integer, minimum: 1 }
+                to: { type: string, enum: [DRAFT, REVIEW, APPROVED, ACTIVE, DEPRECATED, REVOKED] }
+                actor: { type: string, enum: [HUMAN, AI_AGENT], default: HUMAN }
+      responses:
+        '201':
+          description: Regra atualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Rule' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+components:
+  responses:
+    ValidationError:
+      description: Erro de validação ou de política de workflow
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string, example: PAYLOAD_VALIDATION }
+              message: { type: string }
+              statusCode: { type: integer }
+  schemas:
+    TaxCalculationRequest:
+      type: object
+      required: [correlationId, items]
+      properties:
+        correlationId: { type: string, description: idempotência/tracing }
+        asOfDate: { type: string, format: date, description: default hoje; permite cálculo retroativo }
+        context:
+          type: object
+          properties:
+            issuer:
+              type: object
+              properties:
+                partyRef: { type: string, description: id ou CNPJ do emissor cadastrado em /v1/parties }
+            recipient:
+              type: object
+              properties:
+                partyRef: { type: string }
+                role: { type: string, enum: [CONTRIBUTOR, NON_CONTRIBUTOR, FINAL_CONSUMER, AUTO], default: AUTO }
+                address:
+                  type: object
+                  properties:
+                    state: { type: string, description: UF }
+        operation:
+          type: object
+          properties:
+            kind: { type: string, enum: [SALE_GOODS, SERVICE_PROVISION, TRANSFER, REMITTANCE, RENTAL, IMPORT, EXPORT, CONSUMPTION_ASSET, AUTO], default: AUTO }
+            purpose: { type: string, enum: [SAMPLE, GIFT, REPAIR, TOLL_MANUFACTURING, OTHER] }
+            fiscalDocumentType: { type: string, enum: [NFE, NFCE, NFSE, NONE, AUTO], default: AUTO }
+        items:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/Item' }
+        options:
+          type: object
+          properties:
+            detailLevel: { type: string, enum: [SUMMARY, FULL_TRACE, EXPLANATION], default: SUMMARY }
+    Item:
+      type: object
+      properties:
+        id: { type: [string, integer] }
+        description: { type: string }
+        quantity: { type: number, default: 1 }
+        unitPrice:
+          type: object
+          required: [amount]
+          properties:
+            amount: { type: integer, description: centavos }
+            currency: { type: string, default: BRL }
+        classification:
+          type: object
+          properties:
+            ncm: { type: string }
+            cest: { type: string }
+            serviceCode: { type: string, description: LC 116/03 }
+            origin: { type: string, enum: [DOMESTIC, IMPORTED, FOREIGN_SIMILAR, AUTO] }
+        discounts:
+          type: array
+          items:
+            type: object
+            properties:
+              amount: { type: integer }
+              kind: { type: string, enum: [UNCONDITIONAL, CONDITIONAL] }
+    TaxCalculationResponse:
+      type: object
+      properties:
+        decisionId: { type: string, format: uuid }
+        correlationId: { type: string }
+        engineVersion: { type: string }
+        rulesetHash: { type: string, description: hash do snapshot de regras (reprodutibilidade) }
+        asOfDate: { type: string, format: date }
+        derivedTier: { type: string, enum: [MINIMAL, INTERMEDIATE, ADVANCED, COMPLETE] }
+        fiscalDocumentType: { type: string }
+        operationKind: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string }
+              taxes:
+                type: array
+                items: { $ref: '#/components/schemas/TaxItem' }
+        totals:
+          type: array
+          items:
+            type: object
+            properties:
+              tax: { type: string }
+              amountCents: { type: integer }
+        inferences:
+          type: array
+          description: tudo que o motor inferiu de AUTO/ausências, com evidência
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              value: { type: string }
+              evidence: { type: string }
+        warnings: { type: array, items: { type: string } }
+        errors: { type: array, items: {} }
+        trace: { type: array, description: presente com detailLevel=FULL_TRACE }
+    TaxItem:
+      type: object
+      properties:
+        tax: { type: string, example: ICMS }
+        outcome: { type: string, enum: [TAXED, EXEMPT, IMMUNE, NON_TAXABLE, ZERO_RATED, SUSPENDED, DEFERRED, RETAINED, NO_RULE_FOUND] }
+        basisCents: { type: integer }
+        rateBp: { type: integer }
+        amountCents: { type: integer }
+        legalBases: { type: array, items: { type: string }, example: ["LC 190/2022, art. 3º"] }
+        appliedRules: { type: array, items: { type: string }, example: ["DIFAL-SP-GENERAL@v1"] }
+        hints: { type: array, items: { type: string }, description: diagnóstico quando NO_RULE_FOUND }
+    Party:
+      type: object
+      required: [taxId, legalName, establishments]
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        taxId: { type: string }
+        legalName: { type: string }
+        type: { type: string, enum: [COMPANY, INDIVIDUAL_ENTREPRENEUR, INDIVIDUAL, MEI] }
+        establishments:
+          type: array
+          items:
+            type: object
+            required: [address, taxRegimes]
+            properties:
+              address:
+                type: object
+                required: [state]
+                properties:
+                  state: { type: string, description: UF }
+                  city: { type: string }
+              taxRegimes:
+                type: array
+                description: intervalos temporais disjuntos; a decisão usa o vigente na data
+                items:
+                  type: object
+                  required: [regime, validFrom]
+                  properties:
+                    regime: { type: string, enum: [NORMAL, SIMPLES_NACIONAL, MEI, LUCRO_PRESUMIDO, LUCRO_REAL] }
+                    validFrom: { type: string, format: date }
+                    validTo: { type: string, format: date }
+              municipalRegistration: { type: string }
+    RuleDraft:
+      type: object
+      required: [tribute, name, jurisdiction, condition, effects, validFrom]
+      properties:
+        tribute: { type: string, example: ICMS }
+        name: { type: string }
+        jurisdiction:
+          type: object
+          required: [scope]
+          properties:
+            scope: { type: string, enum: [FEDERAL, STATE, MUNICIPAL] }
+            code: { type: string, description: UF ou IBGE }
+        condition:
+          type: object
+          description: árvore Specification serializada (vocabulário spec-v1)
+          example: { kind: and, children: [{ kind: predicate, predicate: isInternal }, { kind: predicate, predicate: issuerStateIs, args: { uf: SE } }] }
+        effects:
+          type: array
+          items:
+            oneOf:
+              - type: object
+                required: [type, rateBp]
+                properties:
+                  type: { type: string, enum: [applyRate] }
+                  rateBp: { type: integer }
+              - type: object
+                required: [type, pctBp]
+                properties:
+                  type: { type: string, enum: [reduceBasis] }
+                  pctBp: { type: integer }
+              - type: object
+                properties:
+                  type: { type: string, enum: [exempt, nonTaxable, zeroRate] }
+        priority: { type: integer, default: 0 }
+        validFrom: { type: string, format: date }
+        validTo: { type: string, format: date }
+        legalBasis: { $ref: '#/components/schemas/LegalBasis' }
+        reviewReason: { type: string }
+        origin: { type: string, enum: [LEGISLATION, MANUAL, IMPORTED, AI_SUGGESTED] }
+        proposedBy: { type: string, enum: [HUMAN, AI_AGENT] }
+    LegalBasis:
+      type: object
+      required: [documentType, number, year]
+      properties:
+        documentType: { type: string, enum: [LEI, LEI_COMPLEMENTAR, DECRETO, CONVENIO, AJUSTE_SINIEF, ATO_COTEPE, INSTRUCAO_NORMATIVA, RESOLUCAO, REGULAMENTO_ESTADUAL, LEI_MUNICIPAL] }
+        number: { type: string }
+        year: { type: string }
+        provision: { type: string, example: "art. 99, §2º, XI" }
+    Rule:
+      type: object
+      properties:
+        id: { type: string }
+        version: { type: integer }
+        tribute: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [DRAFT, REVIEW, APPROVED, ACTIVE, DEPRECATED, REVOKED] }
+        origin: { type: string }
+        validity:
+          type: object
+          properties:
+            from: { type: string, format: date }
+            to: { type: string, format: date, nullable: true }
+        legalBasis: { $ref: '#/components/schemas/LegalBasis' }
+        reviewReason: { type: string }
+    RuleCreated:
+      type: object
+      properties:
+        rule: { $ref: '#/components/schemas/Rule' }
+        transitionUrl: { type: string }

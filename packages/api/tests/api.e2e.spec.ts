@@ -7,13 +7,14 @@ import { ExpressAdapter } from "@nestjs/platform-express";
 import { TaxDecisionsController } from "../src/tax-decisions/tax-decisions.controller.js";
 import { PartiesController } from "../src/parties/parties.controller.js";
 import { RulesAdminController } from "../src/rules/rule-admin.controller.js";
+import { DocsController } from "../src/docs/docs.controller.js";
 
 describe("API e2e — /v1/tax-decisions", () => {
   let app: INestApplication;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      controllers: [TaxDecisionsController, PartiesController, RulesAdminController],
+      controllers: [TaxDecisionsController, PartiesController, RulesAdminController, DocsController],
     }).compile();
     app = moduleRef.createNestApplication(new ExpressAdapter());
     await app.init();
@@ -226,5 +227,15 @@ describe("API e2e — /v1/tax-decisions", () => {
         validFrom: "2026-01-01",
       })
       .expect(400);
+  });
+
+  it("/openapi.yaml serve o contrato; /docs serve o Swagger UI", async () => {
+    const spec = await request(app.getHttpServer()).get("/openapi.yaml").expect(200);
+    expect(spec.text).toMatch(/openapi: 3\.1\.0/);
+    expect(spec.text).toContain("/v1/tax-decisions");
+    expect(spec.text).toContain("/v1/rules/{id}/transitions");
+
+    const ui = await request(app.getHttpServer()).get("/docs").expect(200);
+    expect(ui.text).toMatch(/swagger-ui/i);
   });
 });

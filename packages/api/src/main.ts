@@ -10,6 +10,7 @@ import type { TaxCalculationResponse } from "./tax-decisions/tax-decisions.contr
 import { PartiesController, InMemoryPartyStore, PARTY_STORE } from "./parties/parties.controller.js";
 import type { Party, PartyStore } from "./parties/parties.controller.js";
 import { RulesAdminController, RULE_CATALOG, defaultRuleCatalog } from "./rules/rule-admin.controller.js";
+import { DocsController } from "./docs/docs.controller.js";
 import type { RuleCatalogStore } from "./rules/rule-admin.controller.js";
 
 /**
@@ -49,7 +50,7 @@ async function bootstrap(): Promise<void> {
 
   const app = await NestFactory.create({
     module: TaxDecisionsModule,
-    controllers: [PartiesController, RulesAdminController],
+    controllers: [PartiesController, RulesAdminController, DocsController],
     providers: [
       { provide: DECISION_STORE, useValue: store },
       { provide: RULE_SOURCE, useValue: ruleSource },

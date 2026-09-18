@@ -6,6 +6,7 @@ COPY packages/api/package.json packages/api/
 COPY packages/infrastructure/package.json packages/infrastructure/
 RUN npm ci
 COPY tsconfig.base.json ./
+COPY docs docs
 COPY packages/domain packages/domain
 COPY packages/api packages/api
 COPY packages/infrastructure packages/infrastructure
