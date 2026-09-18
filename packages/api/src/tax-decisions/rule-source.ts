@@ -1,5 +1,5 @@
-import { calculateIcmsWith, icmsRuleCatalog } from "@tributax/domain";
-import type { IcmsDecision } from "@tributax/domain";
+import { calculateIcmsWith, calculatePisCofinsWith, icmsRuleCatalog, pisCofinsRuleCatalog } from "@tributax/domain";
+import type { IcmsDecision, PisCofinsDecision } from "@tributax/domain";
 import type { FiscalContext, TaxRule } from "@tributax/domain";
 
 /**
@@ -13,17 +13,30 @@ export interface RuleSource {
   loadRules(ctx: FiscalContext): Promise<readonly TaxRule[]>;
 }
 
+/** Catálogo completo gerado em código (fallback de desenvolvimento). */
+export function generatedCatalog(): readonly TaxRule[] {
+  return [...icmsRuleCatalog(), ...pisCofinsRuleCatalog()];
+}
+
 export class GeneratedRuleSource implements RuleSource {
   async loadRules(_ctx: FiscalContext): Promise<readonly TaxRule[]> {
-    return icmsRuleCatalog();
+    return generatedCatalog();
   }
 }
 
-/** Resolução da decisão contra a fonte de regras informada. */
+/** Resolução das decisões de tributo contra a fonte de regras informada. */
 export async function resolveIcms(
   ctx: FiscalContext,
   source: RuleSource,
 ): Promise<IcmsDecision> {
   const rules = await source.loadRules(ctx);
   return calculateIcmsWith(ctx, rules);
+}
+
+export async function resolvePisCofins(
+  ctx: FiscalContext,
+  source: RuleSource,
+): Promise<PisCofinsDecision> {
+  const rules = await source.loadRules(ctx);
+  return calculatePisCofinsWith(ctx, rules);
 }

@@ -4,7 +4,7 @@ import { ENGINE_VERSION } from "@tributax/domain";
 import type { TaxDecision } from "@tributax/domain";
 import { mapRequest, PayloadValidationError, type Inference } from "./tax-decision.mapper.js";
 import { InMemoryDecisionStore, type DecisionStore } from "./decision-store.js";
-import { resolveIcms, type RuleSource } from "./rule-source.js";
+import { resolveIcms, resolvePisCofins, type RuleSource } from "./rule-source.js";
 import { defaultPartyStore, issuerProfileAt, PARTY_STORE } from "../parties/parties.controller.js";
 import { defaultRuleCatalog, RULE_CATALOG } from "../rules/rule-admin.controller.js";
 import type { IssuerProfile, PartyStore } from "../parties/parties.controller.js";
@@ -95,12 +95,15 @@ export class TaxDecisionsController {
     }
     const mapped = mapRequest(req, issuer);
     const result = await resolveIcms(mapped.ctx, this.ruleSource);
+    const federal = await resolvePisCofins(mapped.ctx, this.ruleSource);
 
     const taxes: TaxItem[] = [toTaxItem("ICMS", result.icms)];
     if (result.difal) {
       taxes.push(toTaxItem("DIFAL", result.difal));
       if (result.fcp) taxes.push(toTaxItem("FCP", result.fcp));
     }
+    taxes.push(toTaxItem("PIS", federal.pis));
+    taxes.push(toTaxItem("COFINS", federal.cofins));
 
     return {
       decisionId: randomUUID(),

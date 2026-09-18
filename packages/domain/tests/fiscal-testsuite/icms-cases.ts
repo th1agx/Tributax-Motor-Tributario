@@ -1,5 +1,6 @@
 import type { FiscalContext } from "../../src/decision/fiscal-context.js";
 import { makeCtx } from "../helpers.js";
+import { calculatePisCofins } from "../../src/tribute/pis-cofins.js";
 
 /**
  * Fiscal Test Suite (ADR-010) — casos de regressão COMO DADO.
@@ -19,6 +20,10 @@ export interface IcmsTestCase {
     readonly difalDestinationCents?: number;
     readonly hasDifal?: boolean;
     readonly fcpAmountCents?: number;
+    readonly pisOutcomeKind?: string;
+    readonly cofinsOutcomeKind?: string;
+    readonly pisAmountCents?: number;
+    readonly cofinsAmountCents?: number;
   };
   readonly legalBasis: string;
   readonly effectiveFrom: string;
@@ -153,6 +158,30 @@ export const ICMS_CASES: readonly IcmsTestCase[] = [
     }),
     expect: { icmsAmountCents: 18000, hasDifal: false },
     legalBasis: "RICMS-MG (NEEDS_REVIEW); LC 87/96 art. 82-A",
+    effectiveFrom: "2026-01-01",
+  },
+  {
+    id: "PISCOFINS-CASE-001",
+    name: "Regime Normal (não cumulativo): PIS 1,65% + COFINS 7,6%",
+    given: makeCtx({ ...base, regime: "NORMAL" }),
+    expect: { pisAmountCents: 1650, cofinsAmountCents: 7600 },
+    legalBasis: "Lei 10.637/2002 art. 8º I; Lei 10.833/2003 art. 2º (NEEDS_REVIEW)",
+    effectiveFrom: "2026-01-01",
+  },
+  {
+    id: "PISCOFINS-CASE-002",
+    name: "Lucro Presumido (cumulativo): PIS 0,65% + COFINS 3%",
+    given: makeCtx({ ...base, regime: "LUCRO_PRESUMIDO" }),
+    expect: { pisAmountCents: 650, cofinsAmountCents: 3000 },
+    legalBasis: "Lei 9.718/1998 (artigos a confirmar — NEEDS_REVIEW)",
+    effectiveFrom: "2026-01-01",
+  },
+  {
+    id: "PISCOFINS-CASE-003",
+    name: "Simples Nacional: PIS/COFINS no DAS — sem regra própria (NO_RULE_FOUND)",
+    given: makeCtx({ ...base, regime: "SIMPLES_NACIONAL" }),
+    expect: { pisOutcomeKind: "NO_RULE_FOUND", cofinsOutcomeKind: "NO_RULE_FOUND" },
+    legalBasis: "LC 123/2006 — tributos unificados no DAS (alíquota por anexo: fase futura)",
     effectiveFrom: "2026-01-01",
   },
 ];

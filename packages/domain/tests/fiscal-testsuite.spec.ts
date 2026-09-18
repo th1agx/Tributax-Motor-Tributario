@@ -1,12 +1,27 @@
 import { describe, expect, it } from "vitest";
 import { calculateIcms } from "../src/tribute/icms.js";
+import { calculatePisCofins } from "../src/tribute/pis-cofins.js";
 import { ICMS_CASES } from "./fiscal-testsuite/icms-cases.js";
 
 describe("Fiscal Test Suite — ICMS (regressão como dado)", () => {
   for (const testCase of ICMS_CASES) {
     it(`${testCase.id}: ${testCase.name} [${testCase.legalBasis}]`, () => {
-      const result = calculateIcms(testCase.given);
       const { expect: e } = testCase;
+
+      // PIS/COFINS (casos PISCOFINS-*) — decididos pelo módulo federal
+      if (e.pisOutcomeKind !== undefined || e.pisAmountCents !== undefined) {
+        const federal = calculatePisCofins(testCase.given);
+        if (e.pisOutcomeKind !== undefined) {
+          expect(federal.pis.outcome.kind).toBe(e.pisOutcomeKind);
+          expect(federal.cofins.outcome.kind).toBe(e.cofinsOutcomeKind ?? e.pisOutcomeKind);
+        } else {
+          expect(federal.pis.outcome).toMatchObject({ amountCents: e.pisAmountCents });
+          expect(federal.cofins.outcome).toMatchObject({ amountCents: e.cofinsAmountCents });
+        }
+        return;
+      }
+
+      const result = calculateIcms(testCase.given);
 
       if (e.icmsOutcomeKind !== undefined) {
         expect(result.icms.outcome.kind).toBe(e.icmsOutcomeKind);

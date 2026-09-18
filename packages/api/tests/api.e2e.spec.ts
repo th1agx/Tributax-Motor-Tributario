@@ -41,9 +41,11 @@ describe("API e2e — /v1/tax-decisions", () => {
     expect(taxes.ICMS).toBe(12000);
     expect(taxes.DIFAL).toBe(6000);
     expect(taxes.FCP).toBe(2000);
+    expect(taxes.PIS).toBe(1650);
+    expect(taxes.COFINS).toBe(7600);
 
     expect(body.inferences.length).toBeGreaterThan(0);
-    expect(body.totals).toHaveLength(3);
+    expect(body.totals).toHaveLength(5);
   });
 
   it("payload mínimo sem endereço: operação interna MG 18%, sem DIFAL", async () => {

@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { and, eq, sql } from "drizzle-orm";
 import { taxRules } from "./schema.js";
 import type { FiscalContext, TaxRule, Jurisdiction, RuleEffect, RuleStatus, SpecJson, LegalBasisRef, TributeId } from "@tributax/domain";
-import { DateRange } from "@tributax/domain";
+import { DateRange, icmsRuleCatalog, pisCofinsRuleCatalog } from "@tributax/domain";
 
 /**
  * Adapter Postgres do port RuleSource (aplicação) — lê o catálogo vigente:
@@ -47,7 +47,7 @@ export async function seedRuleCatalog(databaseUrl: string): Promise<number> {
   const { icmsRuleCatalog } = await import("@tributax/domain");
   const pool = new pg.Pool({ connectionString: databaseUrl });
   const db = drizzle(pool);
-  const catalog = icmsRuleCatalog();
+  const catalog = [...icmsRuleCatalog(), ...pisCofinsRuleCatalog()];
 
   await db
     .insert(taxRules)
