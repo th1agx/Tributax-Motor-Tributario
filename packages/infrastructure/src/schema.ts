@@ -5,10 +5,18 @@ import { customType, index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid, 
  * traces/dados como JSONB, decisões append-only.
  */
 
-/** daterange nativo do Postgres (ADR-003). */
-const daterange = customType<{ data: { from: string; to: string | null } }>({
+/** daterange nativo do Postgres (ADR-003) — objeto ↔ literal `[from,to)`. */
+const daterange = customType<{ data: { from: string; to: string | null }; driverData: string }>({
   dataType() {
     return "daterange";
+  },
+  toDriver(value: { from: string; to: string | null }): string {
+    return `[${value.from},${value.to ?? ""})`;
+  },
+  fromDriver(value: string): { from: string; to: string | null } {
+    const m = /^\[(\d{4}-\d{2}-\d{2}),(\d{4}-\d{2}-\d{2})?\)$/.exec(value);
+    if (!m) throw new Error(`daterange ilegível: ${value}`);
+    return { from: m[1]!, to: m[2] ?? null };
   },
 });
 
