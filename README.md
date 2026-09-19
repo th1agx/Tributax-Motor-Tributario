@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.svg" width="160" alt="Logo Tributax" />
+  <img src="docs/assets/logo-selo-fiscal.svg" width="160" alt="Logo Tributax" />
 </p>
 
 <h1 align="center">Tributax</h1>
@@ -206,4 +206,4 @@ inventada; incerteza normativa é marcada como `NEEDS_REVIEW`.
 
 ## Licença
 
-UNLICENSED (privado). Logotipo: `docs/assets/logo.svg`.
+UNLICENSED (privado). Logotipo: `docs/assets/logo-selo-fiscal.svg`.
