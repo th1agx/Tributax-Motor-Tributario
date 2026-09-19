@@ -3,6 +3,7 @@ import { compile } from "@tributax/domain";
 import { icmsRuleCatalog, pisCofinsRuleCatalog, issRetentionRuleCatalog, ipiRuleCatalog, ibsCbsRuleCatalog, issRuleCatalog } from "@tributax/domain";
 import type { FiscalContext, SpecJson, TaxRule } from "@tributax/domain";
 import { DateRange } from "@tributax/domain";
+import { defaultWebhookRegistry } from "../webhooks/webhooks.controller.js";
 
 /**
  * /v1/rules — authoring e workflow do catálogo (ADR-004/012).
@@ -147,6 +148,7 @@ export class RulesAdminController {
   async create(@Body() input: RuleDraftInput): Promise<{ rule: TaxRule; transitionUrl: string }> {
     validateDraft(input);
     const rule = await this.catalog.create(input);
+    void defaultWebhookRegistry.emit("rule.proposal.created", { ruleId: rule.id, origin: rule.origin });
     return { rule, transitionUrl: `/v1/rules/${rule.id}/transitions` };
   }
 

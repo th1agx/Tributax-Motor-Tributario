@@ -14,6 +14,7 @@ import { DocsController } from "./docs/docs.controller.js";
 import type { RuleCatalogStore } from "./rules/rule-admin.controller.js";
 import { setTenantStore, EnvTenantStore } from "./auth/tenant-store.js";
 import { TenantsController, TENANT_ADMIN_STORE } from "./tenants/tenants.controller.js";
+import { WebhooksController } from "./webhooks/webhooks.controller.js";
 import type { TenantAdminStore } from "./tenants/tenants.controller.js";
 
 /**
@@ -65,7 +66,7 @@ async function bootstrap(): Promise<void> {
 
   const app = await NestFactory.create({
     module: TaxDecisionsModule,
-    controllers: [PartiesController, RulesAdminController, DocsController, TenantsController],
+    controllers: [PartiesController, RulesAdminController, DocsController, TenantsController, WebhooksController],
     providers: [
       { provide: DECISION_STORE, useValue: store },
       { provide: RULE_SOURCE, useValue: ruleSource },

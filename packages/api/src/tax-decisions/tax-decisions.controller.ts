@@ -1,4 +1,4 @@
-import { BadGatewayException, BadRequestException, Body, Controller, Get, Inject, Module, Optional, Param, Post } from "@nestjs/common";
+import { BadGatewayException, BadRequestException, Body, Controller, Get, Headers, Inject, Module, Optional, Param, Post, Res } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { randomUUID } from "node:crypto";
 import { ENGINE_VERSION, inferCfop, fiscalCodeFor, netStCents } from "@tributax/domain";
@@ -13,6 +13,8 @@ import type { RuleCatalogStore } from "../rules/rule-admin.controller.js";
 import { ApiKeyGuard } from "../auth/api-key.guard.js";
 import { RateLimitGuard } from "../auth/rate-limit.guard.js";
 import type { TaxCalculationRequest } from "./tax-decision.request.js";
+import { defaultWebhookRegistry } from "../webhooks/webhooks.controller.js";
+import type { Response } from "express";
 
 /**
  * /v1/tax-decisions e /v1/tax-simulations — mesmo cálculo; decision persiste
@@ -42,11 +44,41 @@ export class TaxDecisionsController {
     this.partyStore = partyStore ?? defaultPartyStore;
   }
 
+  /**
+   * Cache de idempotência por instância (x-idempotency-key): retry de rede
+   * no cliente NÃO gera decisão duplicada. Multi-instância pede Redis/DB —
+   * evolução documentada, não silenciosa.
+   */
+  private readonly idempotency = new Map<string, TaxCalculationResponse>();
+
   @Post("tax-decisions")
-  async decide(@Body() req: TaxCalculationRequest): Promise<TaxCalculationResponse> {
+  async decide(
+    @Body() req: TaxCalculationRequest,
+    @Headers("x-idempotency-key") idemKey?: string,
+    @Res({ passthrough: true }) res?: Response,
+  ): Promise<TaxCalculationResponse> {
     try {
+      if (idemKey) {
+        const replay = this.idempotency.get(idemKey);
+        if (replay) {
+          res?.setHeader("x-idempotent-replay", "true");
+          return replay;
+        }
+      }
       const response = await this.compute(req);
       await this.store.save(response);
+      if (idemKey) {
+        if (this.idempotency.size >= 1000) {
+          const oldest = this.idempotency.keys().next().value;
+          if (oldest !== undefined) this.idempotency.delete(oldest);
+        }
+        this.idempotency.set(idemKey, response);
+      }
+      void defaultWebhookRegistry.emit("decision.created", {
+        decisionId: response.decisionId,
+        correlationId: response.correlationId,
+        rulesetHash: response.rulesetHash,
+      });
       return response;
     } catch (e) {
       throw toHttp(e);

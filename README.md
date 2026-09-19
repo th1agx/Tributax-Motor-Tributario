@@ -51,7 +51,8 @@ Fase de arquitetura — sem código de produção ainda.
 - [x] ICMS-ST (Conv. 92/15): efeito applySt com MVA, cálculo líquido (vICMSST = bruto − ICMS próprio), CST 10/CSOSN 500 e importador de MVA por UF (st-import)
 - [x] DAS do Simples (Anexo I pós-unificação: 6 faixas por RBT12 + 7ª com NEEDS_REVIEW; sem RBT12 = NO_RULE_FOUND honesto; MEI fora, DAS-MEI é fixo mensal)
 - [x] NFS-e completa: deduções de base do ISS (materiais), exportação de serviço não incide (LC 116 art. 2º I), sinalização de retenção na fonte PJ→PJ
-- [ ] SDKs/webhooks/idempotência, FCP por NCM, curadoria municipal e ST completa, anexos III/V do Simples
+- [x] Integração 5★: SDK TypeScript (`@tributax/sdk`, retry/backoff, erros tipados), webhooks com assinatura HMAC (`decision.created`, `rule.proposal.created`) e idempotência em /v1/tax-decisions (`x-idempotency-key`)
+- [ ] FCP por NCM, curadoria municipal e ST completa, anexos III/V do Simples, validação externa com contadores
 
 ## Agente de IA (LLM + RAG)
 
@@ -85,7 +86,7 @@ orquestradores — proxy puro da API REST (ADR-014):
 
 ```bash
 npm install
-npm test        # 191 testes (domínio + collector + API; integração pula sem banco)
+npm test        # 202 testes (domínio + collector + API; integração pula sem banco)
 npm run build   # typecheck estrito nos 4 pacotes
 ```
 
