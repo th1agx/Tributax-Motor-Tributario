@@ -36,7 +36,7 @@ export interface LegalBasisRef {
   readonly documentType:
     | "LEI" | "LEI_COMPLEMENTAR" | "DECRETO" | "CONVENIO" | "AJUSTE_SINIEF"
     | "ATO_COTEPE" | "INSTRUCAO_NORMATIVA" | "RESOLUCAO" | "REGULAMENTO_ESTADUAL"
-    | "LEI_MUNICIPAL";
+    | "LEI_MUNICIPAL" | "CONSTITUICAO";
   readonly number: string;
   readonly year: string;
   readonly provision?: string; // "art. 99, §2º, XI"

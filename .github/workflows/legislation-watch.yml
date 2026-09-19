@@ -1,0 +1,67 @@
+name: LegislationWatch
+
+# ADR-012/013: varredura semanal assistida por IA. Sem OPENAI_API_KEY roda
+# em modo offline (coleta determinística; extração sai vazia — pipeline
+# validado, custo zero). Com a secret, extrai observações e produz report.
+# Com TRIBUTAX_API_URL + TRIBUTAX_API_KEY, aplica as propostas DRAFT via API.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # segundas, 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: legislation-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { tribute: ICMS, uf: RJ }
+          - { tribute: ICMS, uf: SP }
+          - { tribute: ISS }
+          - { tribute: CBS }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Run watch cycle (dry-run)
+        working-directory: packages/collector
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WATCH_RSS_FEEDS: ${{ secrets.WATCH_RSS_FEEDS }}
+        run: |
+          npx tsx src/agent/rag-watch.cli.ts \
+            --tribute ${{ matrix.tribute }} ${{ matrix.uf && format('--uf {0}', matrix.uf) || '' }} \
+            --since 8 --out "watch-report-${{ matrix.tribute }}${{ matrix.uf && format('-{0}', matrix.uf) || '' }}.json"
+
+      - name: Apply to API (optional — creates DRAFTs only)
+        if: ${{ secrets.TRIBUTAX_API_URL != '' }}
+        working-directory: packages/collector
+        env:
+          TRIBUTAX_API_URL: ${{ secrets.TRIBUTAX_API_URL }}
+        run: |
+          npx tsx ../api/src/monitoring/watch-agent.cli.ts \
+            --api "$TRIBUTAX_API_URL" \
+            --report "watch-report-${{ matrix.tribute }}${{ matrix.uf && format('-{0}', matrix.uf) || '' }}.json" \
+            --apply
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: watch-report-${{ matrix.tribute }}${{ matrix.uf && format('-{0}', matrix.uf) || '' }}
+          path: packages/collector/watch-report-*.json
+          retention-days: 30

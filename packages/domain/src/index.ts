@@ -6,3 +6,5 @@ export * from "./tribute/icms.js";
 export * from "./tribute/regions.js";
 export * from "./tribute/pis-cofins.js";
 export * from "./tribute/iss-retencoes.js";
+export * from "./tribute/ipi.js";
+export * from "./tribute/ibs-cbs.js";

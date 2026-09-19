@@ -39,7 +39,9 @@ Fase de arquitetura — sem código de produção ainda.
 - [x] Servidor MCP (`@tributax/mcp`, ADR-014): agentes de IA clientes calculam via `tributax_simulate_taxes`/`decide`/`list_rules`, sempre pela API REST
 - [x] NormStore em pgvector (`PostgresNormStore` + migration custom, busca `<=>` cosseno) e fila de triagem humana (`GET /v1/rules/review-queue`)
 - [x] API keys (`TRIBUTAX_API_KEYS`, guard com `@Public`) e rate limit (`RATE_LIMIT_RPM`, token bucket, 429)
-- [ ] Agendamento do agente, IPI, ISS municipal, IBS/CBS (LC 214/25), multi-tenant completo
+- [x] IPI (não-incidência em serviços, imunidade de exportação, TIPI parcial com NEEDS_REVIEW) e CBS/IBS da LC 214/25 (alíquotas-teste 2026, vigência explícita, ADR-015)
+- [x] Agendamento do LegislationWatch (workflow semanal com matriz de alvos, dry-run + apply opcional)
+- [ ] TIPI completa, ISS municipal, split payment IBS, multi-tenant completo
 
 ## Agente de IA (LLM + RAG)
 
@@ -73,7 +75,7 @@ orquestradores — proxy puro da API REST (ADR-014):
 
 ```bash
 npm install
-npm test        # 92 testes (domínio + collector + API; integração pula sem banco)
+npm test        # 117 testes (domínio + collector + API; integração pula sem banco)
 npm run build   # typecheck estrito nos 4 pacotes
 ```
 

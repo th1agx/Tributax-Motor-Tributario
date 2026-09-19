@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Inject, Module, Optional, Param, Post } from "@nestjs/common";
 import { compile } from "@tributax/domain";
-import { icmsRuleCatalog, pisCofinsRuleCatalog, issRetentionRuleCatalog } from "@tributax/domain";
+import { icmsRuleCatalog, pisCofinsRuleCatalog, issRetentionRuleCatalog, ipiRuleCatalog, ibsCbsRuleCatalog } from "@tributax/domain";
 import type { FiscalContext, SpecJson, TaxRule } from "@tributax/domain";
 import { DateRange } from "@tributax/domain";
 
@@ -55,7 +55,7 @@ export class InMemoryRuleCatalog implements RuleCatalogStore {
   private readonly rules = new Map<string, TaxRule>();
   private seq = 0;
 
-  constructor(seed: readonly TaxRule[] = [...icmsRuleCatalog(), ...pisCofinsRuleCatalog(), ...issRetentionRuleCatalog()]) {
+  constructor(seed: readonly TaxRule[] = [...icmsRuleCatalog(), ...pisCofinsRuleCatalog(), ...issRetentionRuleCatalog(), ...ipiRuleCatalog(), ...ibsCbsRuleCatalog()]) {
     for (const r of seed) this.rules.set(`${r.id}@${r.version}`, r);
   }
 

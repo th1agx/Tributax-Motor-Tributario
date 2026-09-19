@@ -1,5 +1,5 @@
-import { calculateIcmsWith, calculatePisCofinsWith, calculateIssRetentionsWith, icmsRuleCatalog, pisCofinsRuleCatalog, issRetentionRuleCatalog } from "@tributax/domain";
-import type { IcmsDecision, PisCofinsDecision, IssRetentionDecision } from "@tributax/domain";
+import { calculateIcmsWith, calculatePisCofinsWith, calculateIssRetentionsWith, calculateIpiWith, calculateIbsCbsWith, icmsRuleCatalog, pisCofinsRuleCatalog, issRetentionRuleCatalog, ipiRuleCatalog, ibsCbsRuleCatalog } from "@tributax/domain";
+import type { IcmsDecision, PisCofinsDecision, IssRetentionDecision, IpiDecision, IbsCbsDecision } from "@tributax/domain";
 import type { FiscalContext, TaxRule } from "@tributax/domain";
 
 /**
@@ -15,7 +15,7 @@ export interface RuleSource {
 
 /** Catálogo completo gerado em código (fallback de desenvolvimento). */
 export function generatedCatalog(): readonly TaxRule[] {
-  return [...icmsRuleCatalog(), ...pisCofinsRuleCatalog(), ...issRetentionRuleCatalog()];
+  return [...icmsRuleCatalog(), ...pisCofinsRuleCatalog(), ...issRetentionRuleCatalog(), ...ipiRuleCatalog(), ...ibsCbsRuleCatalog()];
 }
 
 export class GeneratedRuleSource implements RuleSource {
@@ -47,4 +47,20 @@ export async function resolveIssRetentions(
 ): Promise<IssRetentionDecision> {
   const rules = await source.loadRules(ctx);
   return calculateIssRetentionsWith(ctx, rules);
+}
+
+export async function resolveIpi(
+  ctx: FiscalContext,
+  source: RuleSource,
+): Promise<IpiDecision> {
+  const rules = await source.loadRules(ctx);
+  return calculateIpiWith(ctx, rules);
+}
+
+export async function resolveIbsCbs(
+  ctx: FiscalContext,
+  source: RuleSource,
+): Promise<IbsCbsDecision> {
+  const rules = await source.loadRules(ctx);
+  return calculateIbsCbsWith(ctx, rules);
 }

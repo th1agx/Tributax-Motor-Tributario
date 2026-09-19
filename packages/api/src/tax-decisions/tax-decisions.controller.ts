@@ -5,7 +5,7 @@ import { ENGINE_VERSION } from "@tributax/domain";
 import type { TaxDecision } from "@tributax/domain";
 import { mapRequest, PayloadValidationError, type Inference } from "./tax-decision.mapper.js";
 import { InMemoryDecisionStore, type DecisionStore } from "./decision-store.js";
-import { resolveIcms, resolvePisCofins, resolveIssRetentions, type RuleSource } from "./rule-source.js";
+import { resolveIcms, resolvePisCofins, resolveIssRetentions, resolveIpi, resolveIbsCbs, type RuleSource } from "./rule-source.js";
 import { defaultPartyStore, issuerProfileAt, PARTY_STORE } from "../parties/parties.controller.js";
 import { defaultRuleCatalog, RULE_CATALOG } from "../rules/rule-admin.controller.js";
 import type { IssuerProfile, PartyStore } from "../parties/parties.controller.js";
@@ -110,6 +110,11 @@ export class TaxDecisionsController {
     const retentions = await resolveIssRetentions(mapped.ctx, this.ruleSource);
     taxes.push(toTaxItem("IRRF", retentions.irrf));
     taxes.push(toTaxItem("CSRF", retentions.csrf));
+    const ipi = await resolveIpi(mapped.ctx, this.ruleSource);
+    taxes.push(toTaxItem("IPI", ipi.ipi));
+    const reform = await resolveIbsCbs(mapped.ctx, this.ruleSource);
+    taxes.push(toTaxItem("CBS", reform.cbs));
+    taxes.push(toTaxItem("IBS", reform.ibs));
 
     return {
       decisionId: randomUUID(),

@@ -43,9 +43,12 @@ describe("API e2e — /v1/tax-decisions", () => {
     expect(taxes.FCP).toBe(2000);
     expect(taxes.PIS).toBe(1650);
     expect(taxes.COFINS).toBe(7600);
+    // reforma tributária (LC 214/25): alíquotas-teste 2026 sobre a base
+    expect(taxes.CBS).toBe(900);
+    expect(taxes.IBS).toBe(100);
 
     expect(body.inferences.length).toBeGreaterThan(0);
-    expect(body.totals).toHaveLength(5);
+    expect(body.totals).toHaveLength(7);
   });
 
   it("payload mínimo sem endereço: operação interna MG 18%, sem DIFAL", async () => {
