@@ -10,9 +10,11 @@ COPY packages/sdk/package.json packages/sdk/
 RUN npm ci
 COPY docs docs
 COPY packages/domain packages/domain
+COPY packages/collector packages/collector
 COPY packages/infrastructure packages/infrastructure
 COPY packages/api packages/api
 RUN npm run build --workspace=@tributax/domain \
+ && npm run build --workspace=@tributax/collector \
  && npm run build --workspace=@tributax/infrastructure \
  && npm run build --workspace=@tributax/api
 EXPOSE 3000
