@@ -2,6 +2,7 @@ import { Body, Controller, Get, Inject, Injectable, Module, Optional, Post, UseG
 import { BadRequestException } from "@nestjs/common";
 import { createHmac, randomUUID } from "node:crypto";
 import { AdminGuard } from "../auth/admin.guard.js";
+import { Public } from "../auth/api-key.guard.js";
 
 /**
  * Webhooks (integração 5★): o cliente registra URLs e recebe eventos com
@@ -88,6 +89,7 @@ export const WEBHOOK_REGISTRY = "WEBHOOK_REGISTRY";
 
 @Controller("/v1/webhooks")
 @UseGuards(AdminGuard)
+@Public()
 export class WebhooksController {
   private readonly registry: WebhookRegistry;
 

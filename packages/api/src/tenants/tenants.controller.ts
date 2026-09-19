@@ -2,6 +2,7 @@ import { Body, Controller, Get, Inject, Module, Optional, Param, Patch, Post, Us
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { randomBytes, randomUUID, createHash } from "node:crypto";
 import { AdminGuard } from "../auth/admin.guard.js";
+import { Public } from "../auth/api-key.guard.js";
 import type { Tenant } from "../auth/tenant-store.js";
 
 /**
@@ -54,6 +55,7 @@ export const TENANT_ADMIN_STORE = "TENANT_ADMIN_STORE";
 
 @Controller("/v1/tenants")
 @UseGuards(AdminGuard)
+@Public()
 export class TenantsController {
   private readonly store: TenantAdminStore;
 
