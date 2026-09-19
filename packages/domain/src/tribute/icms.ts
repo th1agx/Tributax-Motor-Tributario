@@ -66,13 +66,17 @@ const INTERNAL_RATES: Record<Uf, InternalRate> = {
  * FCP — parcela adicional do ICMS destinada ao Fundo de Combate à Pobreza
  * (LC 87/96 art. 82-A; EC 87/2019 para DIFAL). Mecânica de NF-e: FCP é
  * campo SEPARADO do DIFAL (vFCPDif ≠ vICMSDif), 100% ao estado destino.
- * Estados com 2% fixo conforme fontes públicas (Avalara, 2025);
- * AM (2%/1,5% por NCM), GO (até 2%) e RJ (até 4%) ficam fora até
- * modelagem por produto — NEEDS_REVIEW em toda a tabela.
+ *
+ * COBERTURA (fontes públicas 2026 — FocusNFe, Mastery B2B, Soften):
+ * - 2% fixo nas UFs abaixo (21 + DF no total);
+ * - FORA por ser por produto/NCM (modelagem futura): AL (1–2% por NCM),
+ *   GO (até 2%), MT (até 2%), AM (2%/1,5% por NCM em parte das fontes);
+ * - MG e SC NÃO aderiram ao FCP (0%) — sem regra, correto.
  */
 const FCP_RATES: Partial<Record<Uf, number>> = {
-  AP: 200, BA: 200, CE: 200, DF: 200, ES: 200, MA: 200, PA: 200, PB: 200,
-  PE: 200, PI: 200, RN: 200, RO: 200, RR: 200, SP: 200, TO: 200,
+  AC: 200, AP: 200, BA: 200, CE: 200, DF: 200, ES: 200, MA: 200, PA: 200,
+  PB: 200, PE: 200, PI: 200, PR: 200, RN: 200, RO: 200, RR: 200, RS: 200,
+  SE: 200, MS: 200, SP: 200, TO: 200, AM: 200,
 };
 
 /** Res. SF 22/89 art. 2º: origens favorecidas (7% → S/SE exceto ES). */

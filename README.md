@@ -44,7 +44,8 @@ Fase de arquitetura — sem código de produção ainda.
 - [x] ISS municipal (LC 116/03): município do prestador no payload (`context.issuer.address.cityIbgeCode`), catálogo parcial com NEEDS_REVIEW, MEI/Simples sem regra própria
 - [x] Split payment do IBS sinalizado como warning nas decisões 2026; multi-tenant com quota (tabela `tenants`, key como sha256, rpmQuota por empresa)
 - [x] Cobertura nacional ICMS: 27/27 UFs com alíquota interna (fontes públicas 2026), DIFAL e vigência própria p/ AL 20,5% (04/2026)
-- [ ] TIPI completa, tabela municipal completa, API de administração de tenants
+- [x] FCP ampliado (21 UFs + DF a 2%; AL/GO/MT/AM por NCM como modelagem futura; MG/SC sem FCP) e importador da TIPI oficial (CSV RFB → tax_rules com compressão por capítulo, CLI tipi-import)
+- [ ] Tabela municipal completa, API de administração de tenants, FCP por NCM (AL/GO/MT/AM)
 
 ## Agente de IA (LLM + RAG)
 
@@ -78,7 +79,7 @@ orquestradores — proxy puro da API REST (ADR-014):
 
 ```bash
 npm install
-npm test        # 131 testes (domínio + collector + API; integração pula sem banco)
+npm test        # 141 testes (domínio + collector + API; integração pula sem banco)
 npm run build   # typecheck estrito nos 4 pacotes
 ```
 

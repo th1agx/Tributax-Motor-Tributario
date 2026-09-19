@@ -54,6 +54,24 @@ describe("ICMS — cobertura nacional 27/27", () => {
     }
   });
 
+  it("FCP ampliado: RS/PR/SE/MS/AM têm 2% no DIFAL; MG e SC não têm FCP", () => {
+    for (const uf of ["RS", "PR", "SE", "MS", "AM"] as const) {
+      const d = calculateIcmsWith(
+        makeCtx({ issuerState: "MG", recipientState: uf, recipientRole: "FINAL_CONSUMER" }),
+        icmsRuleCatalog(),
+      );
+      expect(d.fcp?.outcome.kind, `FCP ${uf}`).toBe("TAXED");
+      if (d.fcp?.outcome.kind === "TAXED") expect(d.fcp.outcome.rateBp).toBe(200);
+    }
+    for (const uf of ["MG", "SC"] as const) {
+      const d = calculateIcmsWith(
+        makeCtx({ issuerState: "SP", recipientState: uf, recipientRole: "FINAL_CONSUMER" }),
+        icmsRuleCatalog(),
+      );
+      expect(d.fcp?.outcome.kind, `FCP ${uf} ausente`).toBeUndefined();
+    }
+  });
+
   it("UFs estáveis não carregam reviewReason; recentes sim (fila do watch)", () => {
     const catalog = icmsRuleCatalog();
     const sp = catalog.find((r) => r.id === "ICMS-INT-SP")!;
