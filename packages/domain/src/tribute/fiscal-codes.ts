@@ -84,6 +84,12 @@ export function fiscalCodeFor(
 
   const isSimples = SIMPLES.includes(regime);
 
+  if (tribute === "ICMS_ST") {
+    if (outcome.kind !== "TAXED") return undefined;
+    // substituto retendo: CST 10 (normal) / CSOSN 500 (Simples — ST retida antes)
+    return isSimples ? { kind: "CSOSN", code: "500" } : { kind: "CST", code: "10" };
+  }
+
   if (tribute === "ICMS") {
     if (isSimples) {
       switch (outcome.kind) {

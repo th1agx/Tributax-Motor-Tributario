@@ -1,11 +1,11 @@
 import { BadGatewayException, BadRequestException, Body, Controller, Get, Inject, Module, Optional, Param, Post } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { randomUUID } from "node:crypto";
-import { ENGINE_VERSION, inferCfop, fiscalCodeFor } from "@tributax/domain";
+import { ENGINE_VERSION, inferCfop, fiscalCodeFor, netStCents } from "@tributax/domain";
 import type { TaxDecision, FiscalContext } from "@tributax/domain";
 import { mapRequest, PayloadValidationError, type Inference } from "./tax-decision.mapper.js";
 import { InMemoryDecisionStore, type DecisionStore } from "./decision-store.js";
-import { resolveIcms, resolvePisCofins, resolveIssRetentions, resolveIpi, resolveIbsCbs, resolveIss, type RuleSource } from "./rule-source.js";
+import { resolveIcms, resolvePisCofins, resolveIssRetentions, resolveIpi, resolveIbsCbs, resolveIss, resolveIcmsSt, type RuleSource } from "./rule-source.js";
 import { defaultPartyStore, issuerProfileAt, PARTY_STORE } from "../parties/parties.controller.js";
 import { defaultRuleCatalog, RULE_CATALOG } from "../rules/rule-admin.controller.js";
 import type { IssuerProfile, PartyStore } from "../parties/parties.controller.js";
@@ -110,6 +110,13 @@ export class TaxDecisionsController {
     const retentions = await resolveIssRetentions(mapped.ctx, this.ruleSource);
     taxes.push(toTaxItem("IRRF", retentions.irrf, mapped.ctx.regime));
     taxes.push(toTaxItem("CSRF", retentions.csrf, mapped.ctx.regime));
+    // ICMS-ST: só entra na resposta quando há regra (sem ST, sem ruído)
+    const st = await resolveIcmsSt(mapped.ctx, this.ruleSource);
+    if (st.icmsSt.outcome.kind === "TAXED") {
+      const net = netStCents(st.icmsSt, result.icms);
+      const item = toTaxItem("ICMS_ST", st.icmsSt, mapped.ctx.regime);
+      taxes.push(net !== undefined ? { ...item, amountCents: net } : item);
+    }
     const ipi = await resolveIpi(mapped.ctx, this.ruleSource);
     taxes.push(toTaxItem("IPI", ipi.ipi, mapped.ctx.regime));
     const reform = await resolveIbsCbs(mapped.ctx, this.ruleSource);

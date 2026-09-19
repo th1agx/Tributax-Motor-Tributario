@@ -19,6 +19,8 @@ export interface Jurisdiction {
 
 export type RuleEffect =
   | { readonly type: "applyRate"; readonly rateBp: number }
+  /** ICMS-ST (Conv. 92/15): base = valor da operação × (1 + MVA), alíquota interna do destino. */
+  | { readonly type: "applySt"; readonly mvaBp: number; readonly rateBp: number }
   | { readonly type: "reduceBasis"; readonly pctBp: number }
   | { readonly type: "exempt" }
   | { readonly type: "nonTaxable" }

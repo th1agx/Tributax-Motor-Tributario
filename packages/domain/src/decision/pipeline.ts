@@ -165,6 +165,19 @@ function describeResolution(c: CompiledRule): string {
 
 function compute(rule: TaxRule, ctx: FiscalContext, rounding: RoundingPolicy): TaxOutcome {
   const basis = applyBasisEffects(rule, Money.fromCents(totalGoodsCents(ctx)));
+  const applySt = rule.effects.find((e) => e.type === "applySt");
+  if (applySt && applySt.type === "applySt") {
+    // base ST = valor da operação × (1 + MVA) — Conv. 92/15, art. 2º, IV
+    const stBase = Money.fromCents(Math.round((basis.cents * (10000 + applySt.mvaBp)) / 10000));
+    const rate = TaxRate.fromBasisPoints(applySt.rateBp);
+    return {
+      kind: "TAXED",
+      basisCents: stBase.cents,
+      rateBp: rate.basisPoints,
+      amountCents: rate.applyTo(stBase, rounding).cents, // ST BRUTO; o líquido (−ICMS próprio) é composição do módulo
+      ...(rule.legalBasis ? { legalBasis: rule.legalBasis } : {}),
+    };
+  }
   const applyRate = rule.effects.find((e) => e.type === "applyRate");
   if (applyRate && applyRate.type === "applyRate") {
     const rate = TaxRate.fromBasisPoints(applyRate.rateBp);

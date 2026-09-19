@@ -9,4 +9,5 @@ export * from "./tribute/iss-retencoes.js";
 export * from "./tribute/ipi.js";
 export * from "./tribute/ibs-cbs.js";
 export * from "./tribute/iss.js";
+export * from "./tribute/icms-st.js";
 export * from "./tribute/fiscal-codes.js";

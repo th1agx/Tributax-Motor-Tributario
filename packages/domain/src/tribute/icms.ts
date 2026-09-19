@@ -88,6 +88,11 @@ const FAVOURED_ORIGINS: readonly Uf[] = [
 const FAVOURED_DESTINATIONS: readonly Uf[] = ["SP", "RJ", "MG", "PR", "SC", "RS"];
 
 /** Catálogo-padrão completo (seed/fallback): ICMS, DIFAL e FCP. */
+/** Alíquota interna catalogada da UF (bp) — usada pelo ICMS-ST e importadores. */
+export function internalRateOf(uf: Uf): number | undefined {
+  return INTERNAL_RATES[uf]?.rateBp;
+}
+
 export function icmsRuleCatalog(): TaxRule[] {
   return [
     ...internalRateRules(),

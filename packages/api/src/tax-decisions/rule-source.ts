@@ -1,5 +1,5 @@
-import { calculateIcmsWith, calculatePisCofinsWith, calculateIssRetentionsWith, calculateIpiWith, calculateIbsCbsWith, calculateIssWith, icmsRuleCatalog, pisCofinsRuleCatalog, issRetentionRuleCatalog, ipiRuleCatalog, ibsCbsRuleCatalog, issRuleCatalog } from "@tributax/domain";
-import type { IcmsDecision, PisCofinsDecision, IssRetentionDecision, IpiDecision, IbsCbsDecision, IssDecision } from "@tributax/domain";
+import { calculateIcmsWith, calculatePisCofinsWith, calculateIssRetentionsWith, calculateIpiWith, calculateIbsCbsWith, calculateIssWith, calculateIcmsStWith, icmsRuleCatalog, pisCofinsRuleCatalog, issRetentionRuleCatalog, ipiRuleCatalog, ibsCbsRuleCatalog, issRuleCatalog } from "@tributax/domain";
+import type { IcmsDecision, PisCofinsDecision, IssRetentionDecision, IpiDecision, IbsCbsDecision, IssDecision, IcmsStDecision } from "@tributax/domain";
 import type { FiscalContext, TaxRule } from "@tributax/domain";
 
 /**
@@ -63,6 +63,14 @@ export async function resolveIbsCbs(
 ): Promise<IbsCbsDecision> {
   const rules = await source.loadRules(ctx);
   return calculateIbsCbsWith(ctx, rules);
+}
+
+export async function resolveIcmsSt(
+  ctx: Parameters<typeof calculateIcmsStWith>[0],
+  source: RuleSource,
+): Promise<IcmsStDecision> {
+  const rules = await source.loadRules(ctx);
+  return calculateIcmsStWith(ctx, rules);
 }
 
 export async function resolveIss(
