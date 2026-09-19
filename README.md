@@ -83,6 +83,14 @@ orquestradores — proxy puro da API REST (ADR-014):
     "env": { "TRIBUTAX_API_URL": "http://localhost:3000", "TRIBUTAX_API_KEY": "..." } } } }
 ```
 
+## Deploy
+
+[![Deploy to Render](https://render.com/images/deploy-button.svg)](https://render.com/deploy?repo=https://github.com/th1agx/Tributax-Motor-Tributario)
+
+Um clique sobe a API (render.yaml); o banco recomendado é o Neon (free sem
+pausa). Guia completo: [docs/deploy.md](docs/deploy.md) — migrations custom
+também rodam sem psql: `DATABASE_URL=... node scripts/migrate-custom.mjs`.
+
 ## Desenvolvimento
 
 ```bash

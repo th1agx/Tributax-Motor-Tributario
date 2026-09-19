@@ -1,0 +1,18 @@
+# Deploy de um clique no Render (botão no README).
+# O banco recomendado é o Neon (free tier não pausa); este yaml só sobe a API.
+services:
+  - type: web
+    name: tributax-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /openapi.yaml
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false # cole a connection string do Neon no painel (ou via CLI)
+      - key: TRIBUTAX_ADMIN_KEY
+        generateValue: true # gera um segredo forte para a administração
+      - key: RATE_LIMIT_RPM
+        value: "240"
+      - key: RATE_LIMIT_BURST
+        value: "60"
