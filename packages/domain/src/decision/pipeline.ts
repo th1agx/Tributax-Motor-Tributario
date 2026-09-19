@@ -178,6 +178,22 @@ function compute(rule: TaxRule, ctx: FiscalContext, rounding: RoundingPolicy): T
       ...(rule.legalBasis ? { legalBasis: rule.legalBasis } : {}),
     };
   }
+  const dasAnexo = rule.effects.find((e) => e.type === "applyDasAnexo");
+  if (dasAnexo && dasAnexo.type === "applyDasAnexo") {
+    // Anexos III/V: efetiva = nominal − (dedução × 10000 / RBT12), LC 123/06
+    if (!ctx.rbt12Cents || ctx.rbt12Cents <= 0) {
+      throw new Error(`regra ${rule.id} exige rbt12Cents no contexto`);
+    }
+    const effBp = Math.max(0, dasAnexo.nominalBp - Math.round((dasAnexo.deductionCents * 10000) / ctx.rbt12Cents));
+    const rate = TaxRate.fromBasisPoints(effBp);
+    return {
+      kind: "TAXED",
+      basisCents: basis.cents,
+      rateBp: rate.basisPoints,
+      amountCents: rate.applyTo(basis, rounding).cents,
+      ...(rule.legalBasis ? { legalBasis: rule.legalBasis } : {}),
+    };
+  }
   const applyRate = rule.effects.find((e) => e.type === "applyRate");
   if (applyRate && applyRate.type === "applyRate") {
     const rate = TaxRate.fromBasisPoints(applyRate.rateBp);

@@ -21,6 +21,8 @@ export type RuleEffect =
   | { readonly type: "applyRate"; readonly rateBp: number }
   /** ICMS-ST (Conv. 92/15): base = valor da operação × (1 + MVA), alíquota interna do destino. */
   | { readonly type: "applySt"; readonly mvaBp: number; readonly rateBp: number }
+  /** Simples Anexos III/V (LC 123/06): alíquota EFETIVA = (RBT12 × nominal − dedução) / RBT12. */
+  | { readonly type: "applyDasAnexo"; readonly nominalBp: number; readonly deductionCents: number }
   | { readonly type: "reduceBasis"; readonly pctBp: number }
   | { readonly type: "exempt" }
   | { readonly type: "nonTaxable" }
