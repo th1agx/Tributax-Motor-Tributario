@@ -36,7 +36,8 @@ Fase de arquitetura — sem código de produção ainda.
 - [x] `/v1/parties`, OpenAPI + Swagger UI, PIS/COFINS, retenções federais em serviços
 - [x] LegislationWatch (ADR-012): diff catálogo × observações, propostas DRAFT `AI_SUGGESTED`
 - [x] Coletor legislativo + RAG (`@tributax/collector`, ADR-013): DOU/RSS → chunking → embeddings → extração LLM com guardrails → WatchReport
-- [ ] NormStore em pgvector, fila de triagem humana, agendamento do agente, IPI, ISS municipal, IBS/CBS (LC 214/25)
+- [x] Servidor MCP (`@tributax/mcp`, ADR-014): agentes de IA clientes calculam via `tributax_simulate_taxes`/`decide`/`list_rules`, sempre pela API REST
+- [ ] NormStore em pgvector, fila de triagem humana, agendamento do agente, IPI, ISS municipal, IBS/CBS (LC 214/25), API keys/multi-tenant
 
 ## Agente de IA (LLM + RAG)
 
@@ -52,6 +53,18 @@ OPENAI_API_KEY=... WATCH_RSS_FEEDS="https://.../rss" \
   npx tsx src/agent/rag-watch.cli.ts --tribute ICMS --uf RJ --out watch-report.json
 # depois, contra a API (cria apenas DRAFTs):
 npx tsx ../api/src/monitoring/watch-agent.cli.ts --report watch-report.json --apply
+```
+
+## MCP (agentes clientes)
+
+`packages/mcp` expõe o motor como ferramenta MCP (stdio) para Claude/Cursor/
+orquestradores — proxy puro da API REST (ADR-014):
+
+```jsonc
+// config do agente cliente
+{ "mcpServers": { "tributax": {
+    "command": "node", "args": ["<repo>/packages/mcp/dist/server.js"],
+    "env": { "TRIBUTAX_API_URL": "http://localhost:3000", "TRIBUTAX_API_KEY": "..." } } } }
 ```
 
 ## Desenvolvimento
