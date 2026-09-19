@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Injectable, Module, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Inject, Injectable, Module, Optional, Post, UseGuards } from "@nestjs/common";
 import { BadRequestException } from "@nestjs/common";
 import { createHmac, randomUUID } from "node:crypto";
 import { AdminGuard } from "../auth/admin.guard.js";
@@ -84,13 +84,14 @@ export class InMemoryWebhookRegistry implements WebhookRegistry {
 }
 
 export const defaultWebhookRegistry = new InMemoryWebhookRegistry();
+export const WEBHOOK_REGISTRY = "WEBHOOK_REGISTRY";
 
 @Controller("/v1/webhooks")
 @UseGuards(AdminGuard)
 export class WebhooksController {
   private readonly registry: WebhookRegistry;
 
-  constructor(registry?: WebhookRegistry) {
+  constructor(@Optional() @Inject(WEBHOOK_REGISTRY) registry?: WebhookRegistry) {
     this.registry = registry ?? defaultWebhookRegistry;
   }
 
