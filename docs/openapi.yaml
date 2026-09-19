@@ -11,11 +11,15 @@ info:
     Documentação de contratos: docs/contracts/payload-spec.md
 servers:
   - url: http://localhost:3000
+security:
+  - ApiKeyAuth: []
 paths:
   /v1/tax-decisions:
     post:
       tags: [decisões]
       summary: Calcula a tributação e persiste a decisão (com trace auditável)
+      parameters:
+        - { name: x-idempotency-key, in: header, required: false, schema: { type: string }, description: retry de rede no cliente não duplica decisão (replay sinalizado em x-idempotent-replay) }
       requestBody:
         required: true
         content:
@@ -40,6 +44,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TaxCalculationResponse' }
         '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
   /v1/tax-simulations:
     post:
       tags: [decisões]
@@ -149,8 +155,135 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Rule' }
         '400': { $ref: '#/components/responses/ValidationError' }
+  /v1/rules/review-queue:
+    get:
+      tags: [regras]
+      summary: Fila de triagem humana (propostas DRAFT/REVIEW, IA primeiro)
+      responses:
+        '200':
+          description: Fila com próximas transições por proposta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queue:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        rule: { $ref: '#/components/schemas/Rule' }
+                        suggestedByAi: { type: boolean }
+                        nextTransitions: { type: array, items: { type: string } }
+  /v1/tenants:
+    post:
+      tags: [administração]
+      security: [{ AdminKeyAuth: [] }]
+      summary: Cria empresa cliente e devolve a API key UMA única vez
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                rpmQuota: { type: integer, minimum: 0, description: 0 = limite global }
+      responses:
+        '201':
+          description: Tenant + apiKey (guarde a key - não é recuperável)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenantCreated' }
+        '403': { description: administração desabilitada (sem TRIBUTAX_ADMIN_KEY) }
+    get:
+      tags: [administração]
+      security: [{ AdminKeyAuth: [] }]
+      summary: Lista tenants (metadados; keys nunca saem)
+      responses:
+        '200':
+          description: Tenants
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Tenant' }
+  /v1/tenants/{id}:
+    patch:
+      tags: [administração]
+      security: [{ AdminKeyAuth: [] }]
+      summary: Ajusta quota ou revoga (active=false) um tenant
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rpmQuota: { type: integer, minimum: 0 }
+                active: { type: boolean }
+      responses:
+        '201': { description: ok }
+  /v1/webhooks:
+    post:
+      tags: [administração]
+      security: [{ AdminKeyAuth: [] }]
+      summary: Registra URL para receber eventos (assinados com HMAC TRIBUTAX_WEBHOOK_SECRET)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, events]
+              properties:
+                url: { type: string, format: uri }
+                events:
+                  type: array
+                  items: { type: string, enum: [decision.created, rule.proposal.created] }
+      responses:
+        '201':
+          description: Webhook registrado
+    get:
+      tags: [administração]
+      security: [{ AdminKeyAuth: [] }]
+      summary: Lista webhooks registrados
+      responses:
+        '200': { description: Webhooks }
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: key do tenant (criada em /v1/tenants); rotas de docs são públicas
+    AdminKeyAuth:
+      type: apiKey
+      in: header
+      name: x-admin-key
+      description: TRIBUTAX_ADMIN_KEY - administração apenas
   responses:
+    Unauthorized:
+      description: API key ausente/inválida/inativa
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string, example: UNAUTHORIZED }
+              message: { type: string }
+    RateLimited:
+      description: Limite por tenant excedido (token bucket)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string, example: RATE_LIMITED }
+              message: { type: string }
     ValidationError:
       description: Erro de validação ou de política de workflow
       content:
@@ -175,6 +308,12 @@ components:
               type: object
               properties:
                 partyRef: { type: string, description: id ou CNPJ do emissor cadastrado em /v1/parties }
+                rbt12Cents: { type: integer, description: receita bruta 12m em centavos - determina a faixa do DAS (Simples) }
+                address:
+                  type: object
+                  properties:
+                    cityIbgeCode: { type: string, description: IBGE 7 dígitos do estabelecimento prestador - determina o ISS (LC 116/03 art. 3º) }
+                    city: { type: string }
             recipient:
               type: object
               properties:
@@ -190,6 +329,7 @@ components:
             kind: { type: string, enum: [SALE_GOODS, SERVICE_PROVISION, TRANSFER, REMITTANCE, RENTAL, IMPORT, EXPORT, CONSUMPTION_ASSET, AUTO], default: AUTO }
             purpose: { type: string, enum: [SAMPLE, GIFT, REPAIR, TOLL_MANUFACTURING, OTHER] }
             fiscalDocumentType: { type: string, enum: [NFE, NFCE, NFSE, NONE, AUTO], default: AUTO }
+            cfop: { type: string, description: 4 dígitos - informado é respeitado como trava; ausente, o motor infere e declara a base }
         items:
           type: array
           minItems: 1
@@ -217,6 +357,14 @@ components:
             cest: { type: string }
             serviceCode: { type: string, description: LC 116/03 }
             origin: { type: string, enum: [DOMESTIC, IMPORTED, FOREIGN_SIMILAR, AUTO] }
+        deductions:
+          type: array
+          description: dedução legal da BASE do ISS (materiais do prestador, LC 116/03)
+          items:
+            type: object
+            properties:
+              amount: { type: integer }
+              description: { type: string }
         discounts:
           type: array
           items:
@@ -235,6 +383,13 @@ components:
         derivedTier: { type: string, enum: [MINIMAL, INTERMEDIATE, ADVANCED, COMPLETE] }
         fiscalDocumentType: { type: string }
         operationKind: { type: string }
+        cfop:
+          type: object
+          description: informado (trava) ou inferido do contexto (com base declarada)
+          properties:
+            code: { type: string, example: "5101" }
+            basis: { type: string }
+            review: { type: string }
         items:
           type: array
           items:
@@ -271,6 +426,12 @@ components:
         basisCents: { type: integer }
         rateBp: { type: integer }
         amountCents: { type: integer }
+        fiscalCode:
+          type: object
+          description: CST/CSOSN do documento derivado do outcome (NO_RULE_FOUND nunca gera código)
+          properties:
+            kind: { type: string, enum: [CST, CSOSN] }
+            code: { type: string, example: "00" }
         legalBases: { type: array, items: { type: string }, example: ["LC 190/2022, art. 3º"] }
         appliedRules: { type: array, items: { type: string }, example: ["DIFAL-SP-GENERAL@v1"] }
         hints: { type: array, items: { type: string }, description: diagnóstico quando NO_RULE_FOUND }
@@ -336,6 +497,12 @@ components:
                   type: { type: string, enum: [reduceBasis] }
                   pctBp: { type: integer }
               - type: object
+                required: [type, mvaBp, rateBp]
+                properties:
+                  type: { type: string, enum: [applySt] }
+                  mvaBp: { type: integer, description: MVA em basis points (ICMS-ST, Conv. 92/15) }
+                  rateBp: { type: integer, description: alíquota interna do destino }
+              - type: object
                 properties:
                   type: { type: string, enum: [exempt, nonTaxable, zeroRate] }
         priority: { type: integer, default: 0 }
@@ -349,7 +516,7 @@ components:
       type: object
       required: [documentType, number, year]
       properties:
-        documentType: { type: string, enum: [LEI, LEI_COMPLEMENTAR, DECRETO, CONVENIO, AJUSTE_SINIEF, ATO_COTEPE, INSTRUCAO_NORMATIVA, RESOLUCAO, REGULAMENTO_ESTADUAL, LEI_MUNICIPAL] }
+        documentType: { type: string, enum: [LEI, LEI_COMPLEMENTAR, DECRETO, CONVENIO, AJUSTE_SINIEF, ATO_COTEPE, INSTRUCAO_NORMATIVA, RESOLUCAO, REGULAMENTO_ESTADUAL, LEI_MUNICIPAL, CONSTITUICAO] }
         number: { type: string }
         year: { type: string }
         provision: { type: string, example: "art. 99, §2º, XI" }
@@ -374,3 +541,15 @@ components:
       properties:
         rule: { $ref: '#/components/schemas/Rule' }
         transitionUrl: { type: string }
+    Tenant:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        rpmQuota: { type: integer }
+        active: { type: boolean }
+    TenantCreated:
+      type: object
+      properties:
+        tenant: { $ref: '#/components/schemas/Tenant' }
+        apiKey: { type: string, description: exibida UMA única vez - guarde }
