@@ -11,6 +11,8 @@ export interface TaxCalculationRequest {
       readonly establishmentRef?: string;
       /** Município do estabelecimento prestador — determina o ISS (LC 116/03 art. 3º). */
       readonly address?: { readonly cityIbgeCode?: string; readonly city?: string };
+      /** Receita bruta acumulada em 12 meses (centavos) — determina a faixa do DAS no Simples. */
+      readonly rbt12Cents?: number;
     };
     readonly recipient?: {
       readonly partyRef?: string;

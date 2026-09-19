@@ -49,7 +49,8 @@ Fase de arquitetura — sem código de produção ainda.
 - [x] Documentação para agentes/LLMs (padrão llms.txt): /llms.txt, /llms-full.txt, /docs/index.md, páginas .md reais e negociação Accept: text/markdown
 - [x] Guia de deploy ([docs/deploy.md](docs/deploy.md)): stack gratuito (Koyeb/Render + Neon + Actions), migrations na ordem, first-tenant seguro e docker-compose.prod.yml para VPS
 - [x] ICMS-ST (Conv. 92/15): efeito applySt com MVA, cálculo líquido (vICMSST = bruto − ICMS próprio), CST 10/CSOSN 500 e importador de MVA por UF (st-import)
-- [ ] DAS por anexo (Simples/MEI), NFS-e completa (retenção/deduções), SDKs/webhooks/idempotência, FCP por NCM, curadoria municipal e ST completa
+- [x] DAS do Simples (Anexo I pós-unificação: 6 faixas por RBT12 + 7ª com NEEDS_REVIEW; sem RBT12 = NO_RULE_FOUND honesto; MEI fora, DAS-MEI é fixo mensal)
+- [ ] NFS-e completa (retenção/deduções), SDKs/webhooks/idempotência, FCP por NCM, curadoria municipal e ST completa
 
 ## Agente de IA (LLM + RAG)
 
@@ -83,7 +84,7 @@ orquestradores — proxy puro da API REST (ADR-014):
 
 ```bash
 npm install
-npm test        # 177 testes (domínio + collector + API; integração pula sem banco)
+npm test        # 184 testes (domínio + collector + API; integração pula sem banco)
 npm run build   # typecheck estrito nos 4 pacotes
 ```
 

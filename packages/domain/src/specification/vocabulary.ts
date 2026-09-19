@@ -60,6 +60,10 @@ const registry: Record<string, PredicateEvaluator> = {
   hasNcm: (ctx) => ctx.items.some((i) => i.ncm !== undefined),
   issuerMunicipalityIs: (ctx, a) => ctx.issuerMunicipality === expectString(a, "ibgeCode"),
   hasIssuerMunicipality: (ctx) => ctx.issuerMunicipality !== undefined,
+  /** RBT12 >= limite (centavos); sem RBT12 informado, false — faixa alguma casa (honesto). */
+  rbt12AtLeast: (ctx, a) => (ctx.rbt12Cents ?? -1) >= (a.cents as number),
+  /** RBT12 < limite (centavos). */
+  rbt12Below: (ctx, a) => (ctx.rbt12Cents ?? Number.MAX_SAFE_INTEGER) < (a.cents as number),
 };
 
 export type PredicateName = keyof typeof registry;

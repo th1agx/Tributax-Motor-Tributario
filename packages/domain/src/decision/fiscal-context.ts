@@ -50,6 +50,8 @@ export interface FiscalContext {
   readonly issuerMunicipality?: string;
   /** CFOP informado pelo emissor (4 dígitos) — respeitado como trava; ausente, o motor infere. */
   readonly cfop?: string;
+  /** Receita bruta acumulada em 12 meses (centavos) — determina a faixa do DAS. */
+  readonly rbt12Cents?: number;
 }
 
 export function isInterstate(ctx: FiscalContext): boolean {

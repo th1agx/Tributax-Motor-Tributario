@@ -1,5 +1,5 @@
-import { calculateIcmsWith, calculatePisCofinsWith, calculateIssRetentionsWith, calculateIpiWith, calculateIbsCbsWith, calculateIssWith, calculateIcmsStWith, icmsRuleCatalog, pisCofinsRuleCatalog, issRetentionRuleCatalog, ipiRuleCatalog, ibsCbsRuleCatalog, issRuleCatalog } from "@tributax/domain";
-import type { IcmsDecision, PisCofinsDecision, IssRetentionDecision, IpiDecision, IbsCbsDecision, IssDecision, IcmsStDecision } from "@tributax/domain";
+import { calculateIcmsWith, calculatePisCofinsWith, calculateIssRetentionsWith, calculateIpiWith, calculateIbsCbsWith, calculateIssWith, calculateIcmsStWith, calculateSimplesDasWith, icmsRuleCatalog, pisCofinsRuleCatalog, issRetentionRuleCatalog, ipiRuleCatalog, ibsCbsRuleCatalog, issRuleCatalog } from "@tributax/domain";
+import type { IcmsDecision, PisCofinsDecision, IssRetentionDecision, IpiDecision, IbsCbsDecision, IssDecision, IcmsStDecision, SimplesDasDecision } from "@tributax/domain";
 import type { FiscalContext, TaxRule } from "@tributax/domain";
 
 /**
@@ -71,6 +71,14 @@ export async function resolveIcmsSt(
 ): Promise<IcmsStDecision> {
   const rules = await source.loadRules(ctx);
   return calculateIcmsStWith(ctx, rules);
+}
+
+export async function resolveSimplesDas(
+  ctx: Parameters<typeof calculateSimplesDasWith>[0],
+  source: RuleSource,
+): Promise<SimplesDasDecision> {
+  const rules = await source.loadRules(ctx);
+  return calculateSimplesDasWith(ctx, rules);
 }
 
 export async function resolveIss(

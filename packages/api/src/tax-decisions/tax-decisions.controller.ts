@@ -5,7 +5,7 @@ import { ENGINE_VERSION, inferCfop, fiscalCodeFor, netStCents } from "@tributax/
 import type { TaxDecision, FiscalContext } from "@tributax/domain";
 import { mapRequest, PayloadValidationError, type Inference } from "./tax-decision.mapper.js";
 import { InMemoryDecisionStore, type DecisionStore } from "./decision-store.js";
-import { resolveIcms, resolvePisCofins, resolveIssRetentions, resolveIpi, resolveIbsCbs, resolveIss, resolveIcmsSt, type RuleSource } from "./rule-source.js";
+import { resolveIcms, resolvePisCofins, resolveIssRetentions, resolveIpi, resolveIbsCbs, resolveIss, resolveIcmsSt, resolveSimplesDas, type RuleSource } from "./rule-source.js";
 import { defaultPartyStore, issuerProfileAt, PARTY_STORE } from "../parties/parties.controller.js";
 import { defaultRuleCatalog, RULE_CATALOG } from "../rules/rule-admin.controller.js";
 import type { IssuerProfile, PartyStore } from "../parties/parties.controller.js";
@@ -122,6 +122,10 @@ export class TaxDecisionsController {
     const reform = await resolveIbsCbs(mapped.ctx, this.ruleSource);
     taxes.push(toTaxItem("CBS", reform.cbs, mapped.ctx.regime));
     taxes.push(toTaxItem("IBS", reform.ibs, mapped.ctx.regime));
+    const das = await resolveSimplesDas(mapped.ctx, this.ruleSource);
+    if (das.das.outcome.kind === "TAXED") {
+      taxes.push(toTaxItem("DAS", das.das, mapped.ctx.regime));
+    }
     const iss = await resolveIss(mapped.ctx, this.ruleSource);
     taxes.push(toTaxItem("ISS", iss.iss, mapped.ctx.regime));
 

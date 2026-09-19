@@ -127,6 +127,7 @@ export function mapRequest(req: TaxCalculationRequest, issuerDefaults: { state: 
           return { cfop: req.operation!.cfop };
         })()
       : {}),
+    ...(req.context?.issuer?.rbt12Cents !== undefined ? { rbt12Cents: req.context.issuer.rbt12Cents } : {}),
     recipientRole: role,
     operationKind: kind,
     ...(req.operation?.purpose ? { purpose: req.operation.purpose as OperationPurpose } : {}),

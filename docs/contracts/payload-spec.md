@@ -87,6 +87,7 @@ Notas:
   "purpose": "SAMPLE | GIFT | REPAIR | TOLL_MANUFACTURING | OTHER?",
   "fiscalDocumentType": "NFE | NFCE | NFSE | NONE | AUTO (default AUTO)",
   "cfop": "4 digitos, opcional - informado e respeitado como trava; ausente, o motor infere e declara a base (com NEEDS_REVIEW quando ambiguo, ex.: produzir x revender)",
+    "issuer.rbt12Cents": "receita bruta 12m em centavos, opcional - determina a faixa do DAS (Simples); ausente, DAS responde NO_RULE_FOUND",
   "modality": "IN_PERSON | DELIVERY | SHIPPING | ELECTRONIC? (default por tipo)",
   "payment": { "method": "CASH|CARD|CREDIT|OTHER?", "term": "SPOT|INSTALLMENTS"? }
 }

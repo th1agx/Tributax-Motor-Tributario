@@ -4,7 +4,7 @@
  */
 export type TributeId =
   | "ICMS" | "ICMS_ST" | "DIFAL" | "FCP" | "IPI" | "PIS" | "COFINS"
-  | "ISS" | "IRRF" | "INSS" | "CSRF" | "IBS" | "CBS" | "STUB";
+  | "ISS" | "IRRF" | "INSS" | "CSRF" | "IBS" | "CBS" | "DAS" | "STUB";
 
 export interface TaxedOutcome {
   readonly kind: "TAXED";
