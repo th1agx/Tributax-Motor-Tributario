@@ -1,127 +1,209 @@
-# Tributax — Motor Tributário
+<p align="center">
+  <img src="docs/assets/logo.svg" width="160" alt="Logo Tributax" />
+</p>
 
-> Um motor de decisão tributária brasileiro: explicável, versionado, auditável e extensível.
+<h1 align="center">Tributax</h1>
 
-Tributax recebe os dados de uma operação comercial (do MEI que emite uma NFS-e à
-empresa que integra via API) e determina tributos, códigos fiscais, bases,
-alíquotas e fundamentos legais — sempre com rastro completo de decisão.
+<p align="center">
+  <strong>Motor de decisão tributária brasileiro — explicável, versionado, auditável.</strong><br/>
+  Do MEI que emite uma NFS-e à multinacional que integra via API: uma requisição retorna
+  tributos, alíquotas, bases, CFOP/CST, fundamentos legais e o rastro completo da decisão.
+</p>
 
-## Princípios
+<p align="center">
+  <img src="https://img.shields.io/badge/stack-Node%2022%20%7C%20NestJS%20%7C%20Drizzle%20%7C%20Postgres%2016-0ea5e9" alt="stack"/>
+  <img src="https://img.shields.io/badge/testes-208%20verdes-16a34a" alt="testes"/>
+  <img src="https://img.shields.io/badge/cobertura%20ICMS-27%2F27%20UFs-0f766e" alt="ICMS"/>
+  <img src="https://img.shields.io/badge/TS-strict%20%7C%20exactOptionalPropertyTypes-3178c6" alt="TypeScript"/>
+</p>
 
-1. Correção fiscal
-2. Auditabilidade
-3. Determinismo
-4. Explicabilidade ("por que este resultado?")
-5. Testabilidade
-6. Extensibilidade
-7. Manutenibilidade
-8. Segurança
-9. Performance (por último, sem otimização prematura)
+<p align="center">
+  <a href="https://tributax-api.onrender.com/llms.txt"><code>Documentação para agentes (llms.txt)</code></a> ·
+  <a href="https://tributax-api.onrender.com/openapi.yaml"><code>OpenAPI</code></a> ·
+  <a href="docs/deploy.md">Guia de deploy</a> ·
+  <a href="docs/adr">ADRs</a>
+</p>
 
-A autoridade do sistema é a **legislação tributária brasileira**. Nenhuma regra é
-inventada; incerteza normativa é marcada como `NEEDS_REVIEW`.
+---
 
-## Estado atual
+## O que é
 
-Fase de arquitetura — sem código de produção ainda.
+O Tributax é um **motor tributário como serviço**. Você envia os dados de uma operação
+comercial (quem emite, quem recebe, o que é, para onde vai) e recebe de volta a carga
+tributária completa — com a qual de cada imposto, quanto, sobre qual base, com qual
+fundamento legal, por qual regra — e por que as alternativas foram descartadas.
 
-- [x] Proposta arquitetural (bounded contexts, rule engine, pipeline, versionamento temporal)
-- [x] Especificação do contrato de payload ([docs/contracts/payload-spec.md](docs/contracts/payload-spec.md))
-- [x] ADRs (001–013, [docs/adr](docs/adr))
-- [x] Fase 0 — esqueleto do domínio + pipeline com trace
-- [x] Fase 1 — ICMS (interna, interestadual, DIFAL 20/80, FCP) + Fiscal Test Suite
-- [x] API REST (`/v1/tax-decisions`, `/v1/tax-simulations`) com tiers de payload
-- [x] Persistência Postgres (Drizzle, range types, decisões append-only)
-- [x] Regras carregadas do banco (catálogo como dado vivo)
-- [x] `/v1/parties`, OpenAPI + Swagger UI, PIS/COFINS, retenções federais em serviços
-- [x] LegislationWatch (ADR-012): diff catálogo × observações, propostas DRAFT `AI_SUGGESTED`
-- [x] Coletor legislativo + RAG (`@tributax/collector`, ADR-013): DOU/RSS → chunking → embeddings → extração LLM com guardrails → WatchReport
-- [x] Servidor MCP (`@tributax/mcp`, ADR-014): agentes de IA clientes calculam via `tributax_simulate_taxes`/`decide`/`list_rules`, sempre pela API REST
-- [x] NormStore em pgvector (`PostgresNormStore` + migration custom, busca `<=>` cosseno) e fila de triagem humana (`GET /v1/rules/review-queue`)
-- [x] API keys (`TRIBUTAX_API_KEYS`, guard com `@Public`) e rate limit (`RATE_LIMIT_RPM`, token bucket, 429)
-- [x] IPI (não-incidência em serviços, imunidade de exportação, TIPI parcial com NEEDS_REVIEW) e CBS/IBS da LC 214/25 (alíquotas-teste 2026, vigência explícita, ADR-015)
-- [x] Agendamento do LegislationWatch (workflow semanal com matriz de alvos, dry-run + apply opcional)
-- [x] ISS municipal (LC 116/03): município do prestador no payload (`context.issuer.address.cityIbgeCode`), catálogo parcial com NEEDS_REVIEW, MEI/Simples sem regra própria
-- [x] Split payment do IBS sinalizado como warning nas decisões 2026; multi-tenant com quota (tabela `tenants`, key como sha256, rpmQuota por empresa)
-- [x] Cobertura nacional ICMS: 27/27 UFs com alíquota interna (fontes públicas 2026), DIFAL e vigência própria p/ AL 20,5% (04/2026)
-- [x] FCP ampliado (21 UFs + DF a 2%; AL/GO/MT/AM por NCM como modelagem futura; MG/SC sem FCP) e importador da TIPI oficial (CSV RFB → tax_rules com compressão por capítulo, CLI tipi-import)
-- [x] API de administração de tenants (/v1/tenants com x-admin-key, key exibida uma única vez, quota/active) e importador municipal de ISS (CSV curado → regras, banda 2–5% da LC 116)
-- [x] Documentação para agentes/LLMs (padrão llms.txt): /llms.txt, /llms-full.txt, /docs/index.md, páginas .md reais e negociação Accept: text/markdown
-- [x] Guia de deploy ([docs/deploy.md](docs/deploy.md)): stack gratuito (Koyeb/Render + Neon + Actions), migrations na ordem, first-tenant seguro e docker-compose.prod.yml para VPS
-- [x] ICMS-ST (Conv. 92/15): efeito applySt com MVA, cálculo líquido (vICMSST = bruto − ICMS próprio), CST 10/CSOSN 500 e importador de MVA por UF (st-import)
-- [x] DAS do Simples (Anexo I pós-unificação: 6 faixas por RBT12 + 7ª com NEEDS_REVIEW; sem RBT12 = NO_RULE_FOUND honesto; MEI fora, DAS-MEI é fixo mensal)
-- [x] NFS-e completa: deduções de base do ISS (materiais), exportação de serviço não incide (LC 116 art. 2º I), sinalização de retenção na fonte PJ→PJ
-- [x] Integração 5★: SDK TypeScript (`@tributax/sdk`, retry/backoff, erros tipados), webhooks com assinatura HMAC (`decision.created`, `rule.proposal.created`) e idempotência em /v1/tax-decisions (`x-idempotency-key`)
-- [x] DAS Anexo III (serviços): alíquota EFETIVA por RBT12 com dedução por faixa (efeito applyDasAnexo); Anexo V declarado NEEDS_REVIEW (CNAE)
-- [ ] FCP por NCM, curadoria municipal e ST completa, validação externa com contadores
+Nada de "caixa-preta que calcula imposto": toda decisão carrega **trace auditável**,
+**hash do ruleset** (reprodutibilidade) e marcação explícita de incerteza normativa
+(`NEEDS_REVIEW`) em vez de suposição silenciosa.
 
-## Agente de IA (LLM + RAG)
+```json
+{
+  "correlationId": "demo-1",
+  "context": { "recipient": { "address": { "state": "SP" } } },
+  "items": [{
+    "description": "Notebook",
+    "unitPrice": { "amount": 350000 },
+    "classification": { "ncm": "84713012" }
+  }]
+}
+```
 
-O ciclo fechado (ADR-012/013): fontes públicas → pipeline RAG → observações
-com fonte primária → diff contra o catálogo → proposta DRAFT `AI_SUGGESTED` →
-**aprovação sempre humana**. Guardrails anti-alucinação: a alíquota citada
-precisa estar escrita no texto da norma; a fonte é amarrada ao chunk lido;
-rejeições são explícitas.
+Resposta (real, produção — venda interestadual a consumidor final):
+
+| Tributo | Resultado | Alíquota | Valor | Código | Fundamento |
+|---|---|---|---|---|---|
+| ICMS | TAXED | 12% | R$ 420,00 | CST 00 | Res. 22/1989 |
+| DIFAL | TAXED | 6% | R$ 210,00 | — | LC 190/2022 |
+| FCP | TAXED | 2% | R$ 70,00 | — | LC 87/96, art. 82-A |
+| PIS/COFINS | TAXED | 1,65% / 7,6% | R$ 57,75 / R$ 266,00 | CST 01 | Leis 10.637/02, 10.833/03 |
+| CBS / IBS | TAXED | 0,90% / 0,10% | R$ 31,50 / R$ 3,50 | — | LC 214/2025 (alíquotas-teste 2026) |
+
+…mais CFOP **6102** inferido, documento **NFC-e**, inferências (`recipient.role →
+FINAL_CONSUMER`) e `rulesetHash` para reprodutibilidade. [Resposta completa](docs/llms-overview.md).
+
+## Por que é diferente
+
+1. **Regras como dados** ([ADR-004](docs/adr/ADR-004-regras-como-dados.md)) — nada de
+   `if` espalhado por código; regras vivem no Postgres com vigências disjuntas
+   garantidas por constraint (`EXCLUDE` com `daterange`).
+2. **Explicabilidade nativa** ([ADR-005](docs/adr/ADR-005-resolucao-de-conflitos.md),
+   [ADR-007](docs/adr/ADR-007-trace-append-only.md)) — especificidade vence conflitos;
+   decisões são append-only; toda resposta responde "por quê".
+3. **IA que propõe, humano que aprova** ([ADR-012](docs/adr/ADR-012-monitoracao-legislativa-por-ia.md)) —
+   o agente LLM+RAG monitora DOU/RSS, extrai observações com fonte primária e cria
+   apenas rascunhos `AI_SUGGESTED`. Guardrails anti-alucinação: a alíquota precisa estar
+   escrita no texto da norma; rejeições têm motivo.
+4. **Honestidade fiscal** — `NO_RULE_FOUND` nunca vira imposto zero; incerteza vira
+   fila de revisão (`NEEDS_REVIEW`), nunca suposição.
+5. **Feito para agentes** — documentação padrão [llms.txt](https://llmsstxt.org) servida
+   pela própria API, servidor MCP para clientes com IA, SDK com retry/idempotência.
+
+## Tributos e cobertura
+
+| Área | Cobertura |
+|---|---|
+| **ICMS** | 27/27 UFs (alíquota interna, fontes públicas 2026), interestadual, DIFAL 20/80, FCP (21 UFs), ST com MVA (Conv. 92/15) |
+| **PIS/COFINS** | Não cumulativo, cumulativo, isenção, suspensão |
+| **IPI** | Não-incidência em serviços, imunidade de exportação, TIPI oficial (importador CSV RFB) |
+| **ISS / NFS-e** | LC 116/03: município do prestador, deduções de base, exportação não incide, retenção PJ→PJ |
+| **Simples Nacional** | DAS Anexo I (6 faixas + 7ª NEEDS_REVIEW) e Anexo III (alíquota efetiva com dedução por RBT12) |
+| **CBS/IBS** | LC 214/2025 — alíquotas-teste 2026 com vigência explícita e split payment sinalizado |
+| **Retenções** | IRRF/CSLL/PIS/COFINS retidos em serviços |
+| **Códigos** | CFOP inferido, CST/CSOSN por tributo (00/40/41, 102/103/400, 10/500…) |
+
+## Arquitetura
+
+```
+packages/
+  domain/           # motor puro: specifications, pipeline, efeitos (applyRate, applySt,
+                    #   applyDasAnexo...), catálogos por tributo — zero I/O
+  api/              # NestJS: REST /v1, guards (api-key, admin, rate-limit), idempotência,
+                    #   webhooks HMAC, docs llms.txt, OpenAPI
+  infrastructure/   # Postgres (Drizzle), stores, importadores (TIPI, ISS, MVA-ST)
+  collector/        # agente IA: RSS/DOU → chunking → embeddings → RAG pgvector →
+                    #   extração LLM com guardrails → WatchReport
+  mcp/              # servidor MCP (stdio) — proxy puro da REST para agentes clientes
+  sdk/              # cliente TypeScript: retry/backoff, erros tipados, idempotencyKey
+```
+
+Multi-tenant com quota por empresa (ADR-009): API keys guardadas como sha256,
+rate limit por tenant, administração por `x-admin-key` (fail-closed).
+
+## Começando
+
+```bash
+git clone https://github.com/th1agx/Tributax-Motor-Tributario.git
+cd Tributax-Motor-Tributario
+npm install
+docker compose up -d      # Postgres 16 + pgvector
+npm run build && npm start  # API em :3000
+npm test                  # 208 testes
+```
+
+Migrations e seed:
+
+```bash
+cd packages/infrastructure && npx drizzle-kit migrate
+cd ../.. && DATABASE_URL=... node scripts/migrate-custom.mjs   # sem psql
+```
+
+### Usando a API
+
+```bash
+curl -s -X POST https://tributax-api.onrender.com/v1/tax-simulations \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $TRIBUTAX_API_KEY" \
+  -d '{"correlationId":"demo","context":{"recipient":{"address":{"state":"SP"}}},
+       "items":[{"description":"Notebook","unitPrice":{"amount":350000},
+                 "classification":{"ncm":"84713012"}}]}'
+```
+
+Principais endpoints: `POST /v1/tax-decisions` (persiste, com `x-idempotency-key`),
+`POST /v1/tax-simulations`, `/v1/parties`, `/v1/rules` (+ `review-queue`),
+admin em `/v1/tenants` e `/v1/webhooks`. Contrato completo:
+[OpenAPI](docs/openapi.yaml) e [especificação de payload](docs/contracts/payload-spec.md).
+
+### Para agentes de IA
+
+O Tributax se apresenta no padrão **llms.txt** — aponte seu agente para
+`https://tributax-api.onrender.com/llms.txt` (ou `/llms-full.txt`). Para clientes
+Claude/Cursor/orquestradores, o servidor MCP:
+
+```jsonc
+{ "mcpServers": { "tributax": {
+    "command": "node", "args": ["<repo>/packages/mcp/dist/server.js"],
+    "env": { "TRIBUTAX_API_URL": "https://tributax-api.onrender.com",
+             "TRIBUTAX_API_KEY": "..." } } } }
+```
+
+Ferramentas: `tributax_simulate_taxes`, `tributax_decide_taxes`, `tributax_list_rules`.
+
+### Agente de monitoração legislativa (LLM + RAG)
 
 ```bash
 cd packages/collector
 OPENAI_API_KEY=... WATCH_RSS_FEEDS="https://.../rss" \
   npx tsx src/agent/rag-watch.cli.ts --tribute ICMS --uf RJ --out watch-report.json
-# depois, contra a API (cria apenas DRAFTs):
+# cria apenas DRAFTs AI_SUGGESTED contra a API:
 npx tsx ../api/src/monitoring/watch-agent.cli.ts --report watch-report.json --apply
 ```
 
-## MCP (agentes clientes)
-
-`packages/mcp` expõe o motor como ferramenta MCP (stdio) para Claude/Cursor/
-orquestradores — proxy puro da API REST (ADR-014):
-
-```jsonc
-// config do agente cliente
-{ "mcpServers": { "tributax": {
-    "command": "node", "args": ["<repo>/packages/mcp/dist/server.js"],
-    "env": { "TRIBUTAX_API_URL": "http://localhost:3000", "TRIBUTAX_API_KEY": "..." } } } }
-```
+Rodada semanal automatizada em `.github/workflows/legislation-watch.yml` (matriz de
+alvos, dry-run + apply opcional).
 
 ## Deploy
 
 [![Deploy to Render](https://render.com/images/deploy-button.svg)](https://render.com/deploy?repo=https://github.com/th1agx/Tributax-Motor-Tributario)
 
-Um clique sobe a API (render.yaml); o banco recomendado é o Neon (free sem
-pausa). Guia completo: [docs/deploy.md](docs/deploy.md) — migrations custom
-também rodam sem psql: `DATABASE_URL=... node scripts/migrate-custom.mjs`.
+Um clique sobe a API (render.yaml); banco recomendado: [Neon](https://neon.tech)
+(free, sem pausa). Guia completo em [docs/deploy.md](docs/deploy.md), incluindo
+`docker-compose.prod.yml` para VPS. Instância de demonstração:
+`https://tributax-api.onrender.com`.
 
-## Desenvolvimento
+## Princípios
 
-```bash
-npm install
-npm test        # 208 testes (domínio + collector + API; integração pula sem banco)
-npm run build   # typecheck estrito nos 4 pacotes
-```
+Correção fiscal · Auditabilidade · Determinismo · Explicabilidade · Testabilidade ·
+Extensibilidade · Manutenibilidade · Segurança · Performance (por último, sem
+otimização prematura).
 
-Com Docker:
+A autoridade do sistema é a **legislação tributária brasileira**. Nenhuma regra é
+inventada; incerteza normativa é marcada como `NEEDS_REVIEW`.
 
-```bash
-docker compose up          # Postgres 16 + API em :3000
-```
+## Roadmap
 
-Migrations (com o Postgres de pé):
-
-```bash
-cd packages/infrastructure
-npx drizzle-kit migrate    # schema gerado
-psql "$DATABASE_URL" -f drizzle/custom/01_no_overlap.sql   # vigência disjunta
-```
-
-Exemplo:
-
-```bash
-curl -X POST localhost:3000/v1/tax-simulations \
-  -H 'content-type: application/json' \
-  -d '{"correlationId":"demo-1","items":[{"description":"Produto","unitPrice":{"amount":100000}}],"context":{"recipient":{"address":{"state":"SP"}}}}'
-```
+- [ ] FCP por NCM (AL/GO/MT/AM) e curadoria ST/municipal em volume
+- [ ] Anexo V do Simples (CNAE) — hoje `NEEDS_REVIEW`
+- [ ] Validação externa com contadores (amostragem de decisões reais)
+- [ ] CBS/IBS definitivas conforme regulamentação da LC 214/2025
 
 ## Documentação
 
+- [Visão geral para LLMs](docs/llms-overview.md)
 - [Especificação do payload](docs/contracts/payload-spec.md)
-- ADRs ([docs/adr](docs/adr))
+- [OpenAPI](docs/openapi.yaml) · [Guia de deploy](docs/deploy.md)
+- [ADRs 001–015](docs/adr) — decisões de arquitetura com contexto e consequências
+
+## Licença
+
+UNLICENSED (privado). Logotipo: `docs/assets/logo.svg`.

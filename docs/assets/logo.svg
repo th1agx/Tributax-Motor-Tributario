@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Tributax">
+  <defs>
+    <linearGradient id="tg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <!-- fundo arredondado -->
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="url(#tg)"/>
+  <!-- coluna da balança -->
+  <rect x="244" y="120" width="24" height="200" rx="12" fill="#ffffff"/>
+  <!-- travessão -->
+  <rect x="140" y="140" width="232" height="22" rx="11" fill="#ffffff"/>
+  <!-- prato esquerdo -->
+  <g fill="#ffffff">
+    <path d="M96 162 l44 0 -22 52 z" opacity="0"/>
+    <path d="M92 168 a48 48 0 0 0 96 0 z"/>
+    <rect x="186" y="162" width="10" height="12" rx="4"/>
+    <rect x="84" y="162" width="10" height="12" rx="4"/>
+    <line x1="140" y1="162" x2="140" y2="216" stroke="#ffffff" stroke-width="8"/>
+  </g>
+  <!-- prato direito (mais alto: decisão calculada) -->
+  <g fill="#ffffff">
+    <path d="M324 128 a48 48 0 0 0 96 0 z"/>
+    <rect x="418" y="122" width="10" height="12" rx="4"/>
+    <rect x="316" y="122" width="10" height="12" rx="4"/>
+    <line x1="372" y1="122" x2="372" y2="176" stroke="#ffffff" stroke-width="8"/>
+  </g>
+  <!-- base -->
+  <rect x="188" y="316" width="136" height="24" rx="12" fill="#ffffff"/>
+  <rect x="156" y="344" width="200" height="24" rx="12" fill="#ffffff" opacity="0.85"/>
+  <!-- nós de regra (trace) -->
+  <g fill="#ffffff" opacity="0.95">
+    <circle cx="256" cy="412" r="14"/>
+    <circle cx="196" cy="446" r="10" opacity="0.7"/>
+    <circle cx="256" cy="452" r="10" opacity="0.55"/>
+    <circle cx="316" cy="446" r="10" opacity="0.7"/>
+    <line x1="256" y1="426" x2="196" y2="438" stroke="#ffffff" stroke-width="6" opacity="0.5"/>
+    <line x1="256" y1="426" x2="256" y2="440" stroke="#ffffff" stroke-width="6" opacity="0.5"/>
+    <line x1="256" y1="426" x2="316" y2="438" stroke="#ffffff" stroke-width="6" opacity="0.5"/>
+  </g>
+</svg>
