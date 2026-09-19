@@ -12,6 +12,7 @@ import type { Party, PartyStore } from "./parties/parties.controller.js";
 import { RulesAdminController, RULE_CATALOG, defaultRuleCatalog } from "./rules/rule-admin.controller.js";
 import { DocsController } from "./docs/docs.controller.js";
 import type { RuleCatalogStore } from "./rules/rule-admin.controller.js";
+import { setTenantStore, EnvTenantStore } from "./auth/tenant-store.js";
 
 /**
  * Composição (ADR-002): main é o único lugar que conhece adapters concretos.
@@ -39,6 +40,16 @@ async function bootstrap(): Promise<void> {
       ruleSource = probe;
       partyStore = new PostgresPartyStoreAdapter(PostgresPartyStore, url);
       ruleCatalog = new PostgresRuleAdminStore(url);
+      // tenants (ADR-009): keys com quota no banco; sem a migration, env
+      try {
+        const { PostgresTenantStore } = await import("@tributax/infrastructure");
+        const tenantStore = new PostgresTenantStore(url);
+        await tenantStore.findByApiKey("__probe__"); // valida a tabela tenants
+        setTenantStore(tenantStore);
+      } catch {
+        console.warn("[tributax] tabela tenants ausente — auth via TRIBUTAX_API_KEYS (aplique drizzle/custom/03_tenants.sql)");
+        setTenantStore(new EnvTenantStore());
+      }
     } catch (e) {
       console.warn(
         `[tributax] Postgres inacessível (${(e as Error).message ?? e}) — ` +

@@ -8,3 +8,4 @@ export * from "./tribute/pis-cofins.js";
 export * from "./tribute/iss-retencoes.js";
 export * from "./tribute/ipi.js";
 export * from "./tribute/ibs-cbs.js";
+export * from "./tribute/iss.js";

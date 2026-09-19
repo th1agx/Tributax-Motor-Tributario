@@ -113,10 +113,12 @@ export function mapRequest(req: TaxCalculationRequest, issuerDefaults: { state: 
     throw new PayloadValidationError("ao menos 1 item é obrigatório");
   }
 
+  const municipality = req.context?.issuer?.address?.cityIbgeCode;
   const ctx: FiscalContext = {
     asOfDate: req.asOfDate ? new Date(req.asOfDate) : new Date(),
     issuerState: issuerDefaults.state,
     recipientState: recipient?.address?.state ? uf(recipient.address.state, "context.recipient.address.state") : issuerDefaults.state,
+    ...(municipality !== undefined ? { issuerMunicipality: municipality } : {}),
     recipientRole: role,
     operationKind: kind,
     ...(req.operation?.purpose ? { purpose: req.operation.purpose as OperationPurpose } : {}),

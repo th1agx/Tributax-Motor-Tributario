@@ -1,12 +1,12 @@
 import { CanActivate, ExecutionContext, HttpException, Injectable, SetMetadata } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
+import { EnvTenantStore, getTenantStore, type RequestWithTenant } from "./tenant-store.js";
 
 /**
- * ApiKeyGuard (ADR-009 multi-tenancy, primeiro degrau): com TRIBUTAX_API_KEYS
- * configurada (lista separada por vírgula), toda rota exige `x-api-key: <k>`
- * ou `authorization: Bearer <k>`. Sem a env, o guard abre (modo dev) —
- * segurança em produção é configurar a env, não remover o guard.
- *
+ * ApiKeyGuard (ADR-009 multi-tenant): resolve a API key via TenantStore
+ * (Postgres em produção; TRIBUTAX_API_KEYS em dev) e anexa o tenant à
+ * request para o rate limit por quota. Sem nenhuma key configurada, o
+ * guard abre (modo dev) — segurança em produção é configurar, não remover.
  * Rotas públicas (docs/health) marcadas com @Public().
  */
 
@@ -16,34 +16,44 @@ export const Public = (): MethodDecorator & ClassDecorator => SetMetadata(IS_PUB
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
-  private readonly keys: readonly string[];
+  private readonly reflector: Reflector;
 
-  constructor(private readonly reflector: Reflector) {
-    this.keys = (process.env.TRIBUTAX_API_KEYS ?? "")
-      .split(",")
-      .map((k) => k.trim())
-      .filter((k) => k !== "");
+  constructor(reflector: Reflector) {
+    this.reflector = reflector;
   }
 
-  canActivate(ctx: ExecutionContext): boolean {
-    if (this.keys.length === 0) return true; // dev: sem env, aberto
-
+  async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, [
       ctx.getHandler(),
       ctx.getClass(),
     ]);
     if (isPublic) return true;
 
-    const req = ctx.switchToHttp().getRequest<{ headers: Record<string, string | undefined> }>();
+    const store = getTenantStore();
+    const req = ctx.switchToHttp().getRequest<RequestWithTenant>();
+
+    // dev: store default (env) sem nenhuma key configurada — guard aberto
+    if (store instanceof EnvTenantStore && !store.configured) {
+      return true; // dev: sem tenant, sem chave
+    }
+
     const presented =
       req.headers["x-api-key"] ??
       (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
-    if (!presented || !this.keys.includes(presented)) {
+    if (!presented) {
       throw new HttpException(
-        { error: "UNAUTHORIZED", message: "API key ausente ou inválida (x-api-key ou Bearer)" },
+        { error: "UNAUTHORIZED", message: "API key ausente (x-api-key ou Bearer)" },
         401,
       );
     }
+    const tenant = await store.findByApiKey(presented);
+    if (!tenant) {
+      throw new HttpException(
+        { error: "UNAUTHORIZED", message: "API key inválida ou inativa" },
+        401,
+      );
+    }
+    req.tributaxTenant = tenant; // RateLimitGuard usa a quota daqui
     return true;
   }
 }

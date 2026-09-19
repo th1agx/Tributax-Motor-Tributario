@@ -1,5 +1,5 @@
-import { calculateIcmsWith, calculatePisCofinsWith, calculateIssRetentionsWith, calculateIpiWith, calculateIbsCbsWith, icmsRuleCatalog, pisCofinsRuleCatalog, issRetentionRuleCatalog, ipiRuleCatalog, ibsCbsRuleCatalog } from "@tributax/domain";
-import type { IcmsDecision, PisCofinsDecision, IssRetentionDecision, IpiDecision, IbsCbsDecision } from "@tributax/domain";
+import { calculateIcmsWith, calculatePisCofinsWith, calculateIssRetentionsWith, calculateIpiWith, calculateIbsCbsWith, calculateIssWith, icmsRuleCatalog, pisCofinsRuleCatalog, issRetentionRuleCatalog, ipiRuleCatalog, ibsCbsRuleCatalog, issRuleCatalog } from "@tributax/domain";
+import type { IcmsDecision, PisCofinsDecision, IssRetentionDecision, IpiDecision, IbsCbsDecision, IssDecision } from "@tributax/domain";
 import type { FiscalContext, TaxRule } from "@tributax/domain";
 
 /**
@@ -15,7 +15,7 @@ export interface RuleSource {
 
 /** Catálogo completo gerado em código (fallback de desenvolvimento). */
 export function generatedCatalog(): readonly TaxRule[] {
-  return [...icmsRuleCatalog(), ...pisCofinsRuleCatalog(), ...issRetentionRuleCatalog(), ...ipiRuleCatalog(), ...ibsCbsRuleCatalog()];
+  return [...icmsRuleCatalog(), ...pisCofinsRuleCatalog(), ...issRetentionRuleCatalog(), ...ipiRuleCatalog(), ...ibsCbsRuleCatalog(), ...issRuleCatalog()];
 }
 
 export class GeneratedRuleSource implements RuleSource {
@@ -63,4 +63,12 @@ export async function resolveIbsCbs(
 ): Promise<IbsCbsDecision> {
   const rules = await source.loadRules(ctx);
   return calculateIbsCbsWith(ctx, rules);
+}
+
+export async function resolveIss(
+  ctx: FiscalContext,
+  source: RuleSource,
+): Promise<IssDecision> {
+  const rules = await source.loadRules(ctx);
+  return calculateIssWith(ctx, rules);
 }

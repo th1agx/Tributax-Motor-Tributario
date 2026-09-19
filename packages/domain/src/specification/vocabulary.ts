@@ -58,6 +58,8 @@ const registry: Record<string, PredicateEvaluator> = {
     return ctx.items.some((i) => i.origin === origin);
   },
   hasNcm: (ctx) => ctx.items.some((i) => i.ncm !== undefined),
+  issuerMunicipalityIs: (ctx, a) => ctx.issuerMunicipality === expectString(a, "ibgeCode"),
+  hasIssuerMunicipality: (ctx) => ctx.issuerMunicipality !== undefined,
 };
 
 export type PredicateName = keyof typeof registry;

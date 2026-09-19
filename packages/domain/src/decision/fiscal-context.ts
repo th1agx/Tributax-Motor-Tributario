@@ -46,6 +46,8 @@ export interface FiscalContext {
   readonly fiscalDocumentType: FiscalDocumentType;
   readonly regime: TaxRegime;
   readonly items: readonly FiscalContextItem[];
+  /** Município do estabelecimento prestador (IBGE 7 dígitos) — determina o ISS (LC 116/03 art. 3º). */
+  readonly issuerMunicipality?: string;
 }
 
 export function isInterstate(ctx: FiscalContext): boolean {

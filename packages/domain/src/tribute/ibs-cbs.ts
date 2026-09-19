@@ -66,7 +66,20 @@ export function calculateIbsCbsWith(
 ): IbsCbsDecision {
   return {
     cbs: calculate({ ctx, rules, tribute: "CBS" }),
-    ibs: calculate({ ctx, rules, tribute: "IBS" }),
+    // split payment do IBS: opcional em 2026, obrigatório na adesão futura —
+    // o cálculo não muda, mas a operação precisa saber (aviso, não erro)
+    ibs: withSplitPaymentWarning(calculate({ ctx, rules, tribute: "IBS" })),
+  };
+}
+
+function withSplitPaymentWarning(d: TaxDecision): TaxDecision {
+  if (d.outcome.kind !== "TAXED") return d;
+  return {
+    ...d,
+    warnings: [
+      ...d.warnings,
+      "IBS: split payment (retenção na liquidação financeira) é OPCIONAL nas alíquotas-teste de 2026 e obrigatório na fase seguinte (LC 214/25) — validar fluxo de recebimento",
+    ],
   };
 }
 

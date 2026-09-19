@@ -4,3 +4,4 @@ export * from "./postgres-rule-source.js";
 export * from "./postgres-party-store.js";
 export * from "./postgres-rule-admin.js";
 export * from "./postgres-norm-store.js";
+export * from "./postgres-tenant-store.js";

@@ -136,3 +136,15 @@ export const normChunks = pgTable(
     publishedIdx: index("norm_chunks_published").on(t.publishedAt),
   }),
 );
+
+/** Tenants (ADR-009): uma empresa cliente por API key (hash sha256, nunca a key). */
+export const tenants = pgTable("tenants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  keyHash: varchar("key_hash", { length: 64 }).notNull(),
+  rpmQuota: text("rpm_quota").notNull().default("0"), // 0 = usar RATE_LIMIT_RPM global
+  active: varchar("active", { length: 1 }).notNull().default("t"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  keyHashIdx: uniqueIndex("tenants_key_hash").on(t.keyHash),
+}));
