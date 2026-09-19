@@ -1,8 +1,8 @@
 import { BadGatewayException, BadRequestException, Body, Controller, Get, Inject, Module, Optional, Param, Post } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { randomUUID } from "node:crypto";
-import { ENGINE_VERSION } from "@tributax/domain";
-import type { TaxDecision } from "@tributax/domain";
+import { ENGINE_VERSION, inferCfop, fiscalCodeFor } from "@tributax/domain";
+import type { TaxDecision, FiscalContext } from "@tributax/domain";
 import { mapRequest, PayloadValidationError, type Inference } from "./tax-decision.mapper.js";
 import { InMemoryDecisionStore, type DecisionStore } from "./decision-store.js";
 import { resolveIcms, resolvePisCofins, resolveIssRetentions, resolveIpi, resolveIbsCbs, resolveIss, type RuleSource } from "./rule-source.js";
@@ -100,23 +100,36 @@ export class TaxDecisionsController {
     const result = await resolveIcms(mapped.ctx, this.ruleSource);
     const federal = await resolvePisCofins(mapped.ctx, this.ruleSource);
 
-    const taxes: TaxItem[] = [toTaxItem("ICMS", result.icms)];
+    const taxes: TaxItem[] = [toTaxItem("ICMS", result.icms, mapped.ctx.regime)];
     if (result.difal) {
-      taxes.push(toTaxItem("DIFAL", result.difal));
-      if (result.fcp) taxes.push(toTaxItem("FCP", result.fcp));
+      taxes.push(toTaxItem("DIFAL", result.difal, mapped.ctx.regime));
+      if (result.fcp) taxes.push(toTaxItem("FCP", result.fcp, mapped.ctx.regime));
     }
-    taxes.push(toTaxItem("PIS", federal.pis));
-    taxes.push(toTaxItem("COFINS", federal.cofins));
+    taxes.push(toTaxItem("PIS", federal.pis, mapped.ctx.regime));
+    taxes.push(toTaxItem("COFINS", federal.cofins, mapped.ctx.regime));
     const retentions = await resolveIssRetentions(mapped.ctx, this.ruleSource);
-    taxes.push(toTaxItem("IRRF", retentions.irrf));
-    taxes.push(toTaxItem("CSRF", retentions.csrf));
+    taxes.push(toTaxItem("IRRF", retentions.irrf, mapped.ctx.regime));
+    taxes.push(toTaxItem("CSRF", retentions.csrf, mapped.ctx.regime));
     const ipi = await resolveIpi(mapped.ctx, this.ruleSource);
-    taxes.push(toTaxItem("IPI", ipi.ipi));
+    taxes.push(toTaxItem("IPI", ipi.ipi, mapped.ctx.regime));
     const reform = await resolveIbsCbs(mapped.ctx, this.ruleSource);
-    taxes.push(toTaxItem("CBS", reform.cbs));
-    taxes.push(toTaxItem("IBS", reform.ibs));
+    taxes.push(toTaxItem("CBS", reform.cbs, mapped.ctx.regime));
+    taxes.push(toTaxItem("IBS", reform.ibs, mapped.ctx.regime));
     const iss = await resolveIss(mapped.ctx, this.ruleSource);
-    taxes.push(toTaxItem("ISS", iss.iss));
+    taxes.push(toTaxItem("ISS", iss.iss, mapped.ctx.regime));
+
+    const cfop = mapped.ctx.cfop
+      ? { code: mapped.ctx.cfop, basis: "CFOP informado pelo emissor (trava validada)" }
+      : (() => {
+          const inferred = inferCfop(mapped.ctx);
+          if (!inferred) return undefined;
+          inferences.push({
+            field: "operation.cfop",
+            value: inferred.code,
+            evidence: inferred.basis,
+          });
+          return inferred;
+        })();
 
     return {
       decisionId: randomUUID(),
@@ -127,6 +140,7 @@ export class TaxDecisionsController {
       derivedTier: mapped.derivedTier,
       fiscalDocumentType: mapped.ctx.fiscalDocumentType,
       operationKind: mapped.ctx.operationKind,
+      ...(cfop ? { cfop } : {}),
       items: [{ itemId: "*", taxes }],
       totals: taxes.reduce<{ tax: string; amountCents: number }[]>((acc, t) =>
         t.amountCents !== undefined ? [...acc, { tax: t.tax, amountCents: t.amountCents }] : acc, []),
@@ -138,8 +152,10 @@ export class TaxDecisionsController {
   }
 }
 
-function toTaxItem(tax: string, d: TaxDecision): TaxItem {
+function toTaxItem(tax: string, d: TaxDecision, regime: FiscalContext["regime"]): TaxItem {
   const appliedRules = d.appliedRule ? [`${d.appliedRule.id}@v${d.appliedRule.version}`] : [];
+  const fc = fiscalCodeFor(tax as Parameters<typeof fiscalCodeFor>[0], d.outcome, regime);
+  const fiscalCode = fc ? { kind: fc.kind, code: fc.code } : undefined;
   if (d.outcome.kind === "TAXED") {
     return {
       tax,
@@ -149,6 +165,7 @@ function toTaxItem(tax: string, d: TaxDecision): TaxItem {
       amountCents: d.outcome.amountCents,
       legalBases: d.outcome.legalBasis ? [legalBasisToString(d.outcome.legalBasis)] : [],
       appliedRules,
+      ...(fiscalCode ? { fiscalCode } : {}),
     };
   }
   if (d.outcome.kind === "NO_RULE_FOUND") {
@@ -165,6 +182,7 @@ function toTaxItem(tax: string, d: TaxDecision): TaxItem {
     outcome: d.outcome.kind,
     legalBases: [legalBasisToString(d.outcome.legalBasis)],
     appliedRules,
+    ...(fiscalCode ? { fiscalCode } : {}),
   };
 }
 
@@ -188,6 +206,8 @@ function toHttp(e: unknown): unknown {
 export interface TaxItem {
   readonly tax: string;
   readonly outcome: string;
+  /** CST/CSOSN derivado do outcome (emissão-grade); ausente quando não aplicável. */
+  readonly fiscalCode?: { readonly kind: "CST" | "CSOSN"; readonly code: string };
   readonly basisCents?: number;
   readonly rateBp?: number;
   readonly amountCents?: number;
@@ -205,6 +225,8 @@ export interface TaxCalculationResponse {
   readonly derivedTier: string;
   readonly fiscalDocumentType: string;
   readonly operationKind: string;
+  /** CFOP informado (respeitado como trava) ou inferido do contexto (com base declarada). */
+  readonly cfop?: { readonly code: string; readonly basis: string; readonly review?: string };
   readonly items: readonly { readonly itemId: string; readonly taxes: readonly TaxItem[] }[];
   readonly totals: readonly { readonly tax: string; readonly amountCents?: number }[];
   readonly inferences: readonly Inference[];

@@ -119,6 +119,14 @@ export function mapRequest(req: TaxCalculationRequest, issuerDefaults: { state: 
     issuerState: issuerDefaults.state,
     recipientState: recipient?.address?.state ? uf(recipient.address.state, "context.recipient.address.state") : issuerDefaults.state,
     ...(municipality !== undefined ? { issuerMunicipality: municipality } : {}),
+    ...(req.operation?.cfop !== undefined
+      ? (() => {
+          if (!/^\d{4}$/.test(req.operation!.cfop!)) {
+            throw new PayloadValidationError("operation.cfop deve ter 4 dígitos");
+          }
+          return { cfop: req.operation!.cfop };
+        })()
+      : {}),
     recipientRole: role,
     operationKind: kind,
     ...(req.operation?.purpose ? { purpose: req.operation.purpose as OperationPurpose } : {}),

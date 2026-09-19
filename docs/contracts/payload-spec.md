@@ -86,6 +86,7 @@ Notas:
            IMPORT | EXPORT | CONSUMPTION_ASSET | AUTO (default AUTO)",
   "purpose": "SAMPLE | GIFT | REPAIR | TOLL_MANUFACTURING | OTHER?",
   "fiscalDocumentType": "NFE | NFCE | NFSE | NONE | AUTO (default AUTO)",
+  "cfop": "4 digitos, opcional - informado e respeitado como trava; ausente, o motor infere e declara a base (com NEEDS_REVIEW quando ambiguo, ex.: produzir x revender)",
   "modality": "IN_PERSON | DELIVERY | SHIPPING | ELECTRONIC? (default por tipo)",
   "payment": { "method": "CASH|CARD|CREDIT|OTHER?", "term": "SPOT|INSTALLMENTS"? }
 }
@@ -232,12 +233,14 @@ Estrutura única para todos os tiers (detalhe conforme `options.detailLevel`):
   "derivedTier": "MINIMAL | INTERMEDIATE | ADVANCED | COMPLETE",
   "fiscalDocumentType": "resolvido",
   "operationKind": "resolvido",
+  "cfop": { "code": "5101", "basis": "por que este CFOP", "review?": "ambiguidade declarada" },
   "items": [{
     "itemId": "...",
     "classifications": { "ncm": "...", "serviceCode": "...", "origin": "..." },
     "taxes": [{
       "tax": "ICMS | ICMS_ST | DIFAL | FCP | IPI | PIS | COFINS | ISS | IRRF | INSS | CSRF | IBS | CBS",
       "outcome": "TAXED | EXEMPT | IMMUNE | NON_TAXABLE | ZERO_RATED | SUSPENDED | DEFERRED | RETAINED | NO_RULE_FOUND",
+      "fiscalCode": { "kind": "CST | CSOSN", "code": "00 | 102 | ..." },
       "basis": "int centavos", "rateBp": "int",
       "amount": "int centavos",
       "split": [{ "jurisdiction": "MG", "amount": 0 }]?  // DIFAL/FCP, CBS/IBS

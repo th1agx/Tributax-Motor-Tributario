@@ -24,6 +24,8 @@ export interface TaxCalculationRequest {
       | "IMPORT" | "EXPORT" | "CONSUMPTION_ASSET" | "AUTO";
     readonly purpose?: "SAMPLE" | "GIFT" | "REPAIR" | "TOLL_MANUFACTURING" | "OTHER";
     readonly fiscalDocumentType?: "NFE" | "NFCE" | "NFSE" | "NONE" | "AUTO";
+    /** CFOP de 4 dígitos — se omitido, o motor infere e sinaliza a base da inferência. */
+    readonly cfop?: string;
   };
   readonly items: readonly TaxCalculationItem[];
   readonly overrides?: Record<string, unknown>;

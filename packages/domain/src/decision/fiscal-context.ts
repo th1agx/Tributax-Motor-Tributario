@@ -48,6 +48,8 @@ export interface FiscalContext {
   readonly items: readonly FiscalContextItem[];
   /** Município do estabelecimento prestador (IBGE 7 dígitos) — determina o ISS (LC 116/03 art. 3º). */
   readonly issuerMunicipality?: string;
+  /** CFOP informado pelo emissor (4 dígitos) — respeitado como trava; ausente, o motor infere. */
+  readonly cfop?: string;
 }
 
 export function isInterstate(ctx: FiscalContext): boolean {
