@@ -46,7 +46,8 @@ Fase de arquitetura — sem código de produção ainda.
 - [x] Cobertura nacional ICMS: 27/27 UFs com alíquota interna (fontes públicas 2026), DIFAL e vigência própria p/ AL 20,5% (04/2026)
 - [x] FCP ampliado (21 UFs + DF a 2%; AL/GO/MT/AM por NCM como modelagem futura; MG/SC sem FCP) e importador da TIPI oficial (CSV RFB → tax_rules com compressão por capítulo, CLI tipi-import)
 - [x] API de administração de tenants (/v1/tenants com x-admin-key, key exibida uma única vez, quota/active) e importador municipal de ISS (CSV curado → regras, banda 2–5% da LC 116)
-- [ ] FCP por NCM (AL/GO/MT/AM), curadoria da tabela municipal completa
+- [x] Documentação para agentes/LLMs (padrão llms.txt): /llms.txt, /llms-full.txt, /docs/index.md, páginas .md reais e negociação Accept: text/markdown
+- [ ] FCP por NCM (AL/GO/MT/AM), curadoria da tabela municipal completa, guia de deploy (docs/deploy.md)
 
 ## Agente de IA (LLM + RAG)
 
@@ -80,7 +81,7 @@ orquestradores — proxy puro da API REST (ADR-014):
 
 ```bash
 npm install
-npm test        # 150 testes (domínio + collector + API; integração pula sem banco)
+npm test        # 156 testes (domínio + collector + API; integração pula sem banco)
 npm run build   # typecheck estrito nos 4 pacotes
 ```
 
