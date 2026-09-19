@@ -27,20 +27,39 @@ Fase de arquitetura — sem código de produção ainda.
 
 - [x] Proposta arquitetural (bounded contexts, rule engine, pipeline, versionamento temporal)
 - [x] Especificação do contrato de payload ([docs/contracts/payload-spec.md](docs/contracts/payload-spec.md))
-- [x] ADRs iniciais (001–012, [docs/adr](docs/adr))
+- [x] ADRs (001–013, [docs/adr](docs/adr))
 - [x] Fase 0 — esqueleto do domínio + pipeline com trace
 - [x] Fase 1 — ICMS (interna, interestadual, DIFAL 20/80, FCP) + Fiscal Test Suite
 - [x] API REST (`/v1/tax-decisions`, `/v1/tax-simulations`) com tiers de payload
 - [x] Persistência Postgres (Drizzle, range types, decisões append-only)
-- [ ] Regras carregadas do banco (catálogo como dado vivo)
-- [ ] `/v1/parties`, OpenAPI, IPI/PIS/COFINS, simulador web
+- [x] Regras carregadas do banco (catálogo como dado vivo)
+- [x] `/v1/parties`, OpenAPI + Swagger UI, PIS/COFINS, retenções federais em serviços
+- [x] LegislationWatch (ADR-012): diff catálogo × observações, propostas DRAFT `AI_SUGGESTED`
+- [x] Coletor legislativo + RAG (`@tributax/collector`, ADR-013): DOU/RSS → chunking → embeddings → extração LLM com guardrails → WatchReport
+- [ ] NormStore em pgvector, fila de triagem humana, agendamento do agente, IPI, ISS municipal, IBS/CBS (LC 214/25)
+
+## Agente de IA (LLM + RAG)
+
+O ciclo fechado (ADR-012/013): fontes públicas → pipeline RAG → observações
+com fonte primária → diff contra o catálogo → proposta DRAFT `AI_SUGGESTED` →
+**aprovação sempre humana**. Guardrails anti-alucinação: a alíquota citada
+precisa estar escrita no texto da norma; a fonte é amarrada ao chunk lido;
+rejeições são explícitas.
+
+```bash
+cd packages/collector
+OPENAI_API_KEY=... WATCH_RSS_FEEDS="https://.../rss" \
+  npx tsx src/agent/rag-watch.cli.ts --tribute ICMS --uf RJ --out watch-report.json
+# depois, contra a API (cria apenas DRAFTs):
+npx tsx ../api/src/monitoring/watch-agent.cli.ts --report watch-report.json --apply
+```
 
 ## Desenvolvimento
 
 ```bash
 npm install
-npm test        # 48 testes (domínio + API; integração pula sem banco)
-npm run build   # typecheck estrito nos 3 pacotes
+npm test        # 92 testes (domínio + collector + API; integração pula sem banco)
+npm run build   # typecheck estrito nos 4 pacotes
 ```
 
 Com Docker:
