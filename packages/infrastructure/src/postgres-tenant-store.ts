@@ -43,6 +43,27 @@ export class PostgresTenantStore {
   async close(): Promise<void> {
     await this.pool.end();
   }
+
+  /** Administração (API /v1/tenants): nunca retorna keys, só metadados. */
+  async list(): Promise<(TenantRow & { active: boolean })[]> {
+    const res = await this.pool.query(
+      "SELECT id, name, rpm_quota, active FROM tenants ORDER BY created_at DESC",
+    );
+    return res.rows.map((r: Record<string, unknown>) => ({
+      id: r.id as string,
+      name: r.name as string,
+      rpmQuota: Number(r.rpm_quota),
+      active: Boolean(r.active),
+    }));
+  }
+
+  async setQuota(id: string, rpmQuota: number): Promise<void> {
+    await this.pool.query("UPDATE tenants SET rpm_quota = $2 WHERE id = $1", [id, rpmQuota]);
+  }
+
+  async setActive(id: string, active: boolean): Promise<void> {
+    await this.pool.query("UPDATE tenants SET active = $2 WHERE id = $1", [id, active]);
+  }
 }
 
 function sha256hex(s: string): string {

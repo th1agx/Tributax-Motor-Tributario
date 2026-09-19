@@ -13,6 +13,8 @@ import { RulesAdminController, RULE_CATALOG, defaultRuleCatalog } from "./rules/
 import { DocsController } from "./docs/docs.controller.js";
 import type { RuleCatalogStore } from "./rules/rule-admin.controller.js";
 import { setTenantStore, EnvTenantStore } from "./auth/tenant-store.js";
+import { TenantsController, TENANT_ADMIN_STORE } from "./tenants/tenants.controller.js";
+import type { TenantAdminStore } from "./tenants/tenants.controller.js";
 
 /**
  * Composição (ADR-002): main é o único lugar que conhece adapters concretos.
@@ -24,6 +26,7 @@ async function bootstrap(): Promise<void> {
   let ruleSource: RuleSource = new GeneratedRuleSource();
   let partyStore: PartyStore = new InMemoryPartyStore();
   let ruleCatalog: RuleCatalogStore = defaultRuleCatalog;
+  let tenantAdminStore: TenantAdminStore | undefined;
 
   if (process.env.DATABASE_URL) {
     const { PostgresDecisionStore, PostgresRuleSource, PostgresPartyStore, PostgresRuleAdminStore } = await import("@tributax/infrastructure");
@@ -46,6 +49,7 @@ async function bootstrap(): Promise<void> {
         const tenantStore = new PostgresTenantStore(url);
         await tenantStore.findByApiKey("__probe__"); // valida a tabela tenants
         setTenantStore(tenantStore);
+        tenantAdminStore = tenantStore; // administração via /v1/tenants
       } catch {
         console.warn("[tributax] tabela tenants ausente — auth via TRIBUTAX_API_KEYS (aplique drizzle/custom/03_tenants.sql)");
         setTenantStore(new EnvTenantStore());
@@ -61,12 +65,13 @@ async function bootstrap(): Promise<void> {
 
   const app = await NestFactory.create({
     module: TaxDecisionsModule,
-    controllers: [PartiesController, RulesAdminController, DocsController],
+    controllers: [PartiesController, RulesAdminController, DocsController, TenantsController],
     providers: [
       { provide: DECISION_STORE, useValue: store },
       { provide: RULE_SOURCE, useValue: ruleSource },
       { provide: PARTY_STORE, useValue: partyStore },
       { provide: RULE_CATALOG, useValue: ruleCatalog },
+      ...(tenantAdminStore ? [{ provide: TENANT_ADMIN_STORE, useValue: tenantAdminStore }] : []),
     ],
   });
   app.enableShutdownHooks();

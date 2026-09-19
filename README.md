@@ -45,7 +45,8 @@ Fase de arquitetura — sem código de produção ainda.
 - [x] Split payment do IBS sinalizado como warning nas decisões 2026; multi-tenant com quota (tabela `tenants`, key como sha256, rpmQuota por empresa)
 - [x] Cobertura nacional ICMS: 27/27 UFs com alíquota interna (fontes públicas 2026), DIFAL e vigência própria p/ AL 20,5% (04/2026)
 - [x] FCP ampliado (21 UFs + DF a 2%; AL/GO/MT/AM por NCM como modelagem futura; MG/SC sem FCP) e importador da TIPI oficial (CSV RFB → tax_rules com compressão por capítulo, CLI tipi-import)
-- [ ] Tabela municipal completa, API de administração de tenants, FCP por NCM (AL/GO/MT/AM)
+- [x] API de administração de tenants (/v1/tenants com x-admin-key, key exibida uma única vez, quota/active) e importador municipal de ISS (CSV curado → regras, banda 2–5% da LC 116)
+- [ ] FCP por NCM (AL/GO/MT/AM), curadoria da tabela municipal completa
 
 ## Agente de IA (LLM + RAG)
 
@@ -79,7 +80,7 @@ orquestradores — proxy puro da API REST (ADR-014):
 
 ```bash
 npm install
-npm test        # 141 testes (domínio + collector + API; integração pula sem banco)
+npm test        # 150 testes (domínio + collector + API; integração pula sem banco)
 npm run build   # typecheck estrito nos 4 pacotes
 ```
 

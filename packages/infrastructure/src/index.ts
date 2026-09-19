@@ -6,3 +6,4 @@ export * from "./postgres-rule-admin.js";
 export * from "./postgres-norm-store.js";
 export * from "./postgres-tenant-store.js";
 export * from "./tipi-import.js";
+export * from "./iss-import.js";
