@@ -1,0 +1,37 @@
+# Produção de referência (VPS): só a API exposta; banco atrás da rede interna.
+# Use com: cp .env.example .env && docker compose -f docker-compose.prod.yml up -d
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: tributax
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina em .env}
+      POSTGRES_DB: tributax
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    # sem "ports:": banco nunca exposto à internet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tributax"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    environment:
+      # aponte para o postgres interno OU para o Neon (basta trocar a URL)
+      DATABASE_URL: ${DATABASE_URL:-postgres://tributax:${POSTGRES_PASSWORD}@postgres:5432/tributax}
+      PORT: "3000"
+      TRIBUTAX_ADMIN_KEY: ${TRIBUTAX_ADMIN_KEY:?defina em .env}
+      RATE_LIMIT_RPM: ${RATE_LIMIT_RPM:-240}
+      RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-60}
+    ports:
+      - "3000:3000" # na frente, reverse proxy com TLS (Caddy/nginx)
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

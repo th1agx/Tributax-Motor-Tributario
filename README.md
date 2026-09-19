@@ -47,7 +47,8 @@ Fase de arquitetura — sem código de produção ainda.
 - [x] FCP ampliado (21 UFs + DF a 2%; AL/GO/MT/AM por NCM como modelagem futura; MG/SC sem FCP) e importador da TIPI oficial (CSV RFB → tax_rules com compressão por capítulo, CLI tipi-import)
 - [x] API de administração de tenants (/v1/tenants com x-admin-key, key exibida uma única vez, quota/active) e importador municipal de ISS (CSV curado → regras, banda 2–5% da LC 116)
 - [x] Documentação para agentes/LLMs (padrão llms.txt): /llms.txt, /llms-full.txt, /docs/index.md, páginas .md reais e negociação Accept: text/markdown
-- [ ] FCP por NCM (AL/GO/MT/AM), curadoria da tabela municipal completa, guia de deploy (docs/deploy.md)
+- [x] Guia de deploy ([docs/deploy.md](docs/deploy.md)): stack gratuito (Koyeb/Render + Neon + Actions), migrations na ordem, first-tenant seguro e docker-compose.prod.yml para VPS
+- [ ] FCP por NCM (AL/GO/MT/AM), curadoria da tabela municipal completa
 
 ## Agente de IA (LLM + RAG)
 
