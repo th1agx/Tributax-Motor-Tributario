@@ -49,6 +49,7 @@ export interface TaxCalculationItem {
     readonly serviceCode?: string;
     readonly origin?: "DOMESTIC" | "IMPORTED" | "FOREIGN_SIMILAR" | "AUTO";
   };
+  readonly deductions?: readonly { readonly amount?: number; readonly description?: string }[];
   readonly discounts?: readonly { readonly amount?: number; readonly kind?: "UNCONDITIONAL" | "CONDITIONAL" }[];
   readonly freight?: number;
   readonly insurance?: number;

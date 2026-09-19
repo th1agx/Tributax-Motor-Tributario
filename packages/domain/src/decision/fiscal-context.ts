@@ -34,6 +34,8 @@ export interface FiscalContextItem {
   readonly serviceCode?: string;
   readonly origin?: MerchandiseOrigin;
   readonly discountCents?: number;
+  /** Dedução legal da BASE do ISS (materiais fornecidos pelo prestador, LC 116/03) — centavos. */
+  readonly issDeductionCents?: number;
 }
 
 export interface FiscalContext {

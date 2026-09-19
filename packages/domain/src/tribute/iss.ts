@@ -2,6 +2,7 @@ import { calculate, type TaxDecision } from "../decision/pipeline.js";
 import type { SpecJson } from "../specification/spec.js";
 import type { TaxRule } from "../decision/tax-rule.js";
 import { DateRange } from "../shared/date-range.js";
+import { TaxRate, Money } from "../shared/index.js";
 
 /**
  * Módulo ISS (fase 4) — a lacuna declarada mais antiga do projeto.
@@ -27,7 +28,7 @@ const MUNICIPAL_RATES: Readonly<Record<string, readonly [string, number, string]
 };
 
 export function issRuleCatalog(): TaxRule[] {
-  return Object.entries(MUNICIPAL_RATES).map(([ibge, [nome, rateBp, lei]]) => ({
+  const municipal: TaxRule[] = Object.entries(MUNICIPAL_RATES).map(([ibge, [nome, rateBp, lei]]) => ({
     id: `ISS-${ibge}-${rateBp}`,
     version: 1,
     tribute: "ISS" as const,
@@ -46,6 +47,27 @@ export function issRuleCatalog(): TaxRule[] {
     legalBasis: { documentType: "LEI_MUNICIPAL" as const, number: lei, year: "—", provision: "lista de serviços anexa à LC 116/03" },
     reviewReason: `alíquota geral de ${nome}; lista de itens da LC 116/03 pode ter alíquotas distintas (NEEDS_REVIEW)`,
   }));
+  return [
+    ...municipal,
+    {
+      id: "ISS-EXPORTACAO-NAO-INCIDE",
+      version: 1,
+      tribute: "ISS",
+      name: "ISS não incide em exportação de serviço",
+      jurisdiction: { scope: "FEDERAL" },
+      condition: andOf(
+        pred("operationKindIs", { kind: "EXPORT" }),
+        pred("hasServiceCode"),
+      ),
+      effects: [{ type: "nonTaxable" }],
+      priority: 10,
+      validity: VALID_FROM_2026(),
+      status: "ACTIVE",
+      origin: "LEGISLATION",
+      legalBasis: { documentType: "LEI_COMPLEMENTAR", number: "116", year: "2003", provision: "art. 2º, I" },
+      reviewReason: "pressupõe resultado do serviço no exterior — validar caso a caso (NEEDS_REVIEW)",
+    },
+  ];
 }
 
 export interface IssDecision {
@@ -56,7 +78,36 @@ export function calculateIssWith(
   ctx: Parameters<typeof calculate>[0]["ctx"],
   rules: readonly TaxRule[],
 ): IssDecision {
-  return { iss: calculate({ ctx, rules, tribute: "ISS" }) };
+  const iss = calculate({ ctx, rules, tribute: "ISS" });
+
+  // deduções legais da base (materiais fornecidos pelo prestador — LC 116/03):
+  // o pipeline usa a base genérica de mercadorias; o ISS deduz materiais
+  const deductions = ctx.items.reduce((acc, i) => acc + (i.issDeductionCents ?? 0), 0);
+  let adjusted = iss;
+  if (deductions > 0 && iss.outcome.kind === "TAXED") {
+    const basisCents = Math.max(0, iss.outcome.basisCents - deductions);
+    const rate = TaxRate.fromBasisPoints(iss.outcome.rateBp);
+    const amount = rate.applyTo(Money.fromCents(basisCents)).cents;
+    adjusted = {
+      ...iss,
+      outcome: { ...iss.outcome, basisCents, amountCents: amount },
+      warnings: [...iss.warnings, `base do ISS reduzida em ${deductions} centavos por dedução legal de materiais (LC 116/03)`],
+    };
+  }
+
+  // retenção na fonte PJ→PJ: sinalização honesta (a % é lei municipal)
+  if (adjusted.outcome.kind === "TAXED" && ctx.recipientRole !== "FINAL_CONSUMER") {
+    return {
+      iss: {
+        ...adjusted,
+        warnings: [
+          ...adjusted.warnings,
+          "tomador é pessoa jurídica: retenção de ISS na fonte PODE se aplicar conforme lei municipal do serviço (NEEDS_REVIEW — confirmar no município)",
+        ],
+      },
+    };
+  }
+  return { iss: adjusted };
 }
 
 export function calculateIss(ctx: Parameters<typeof calculate>[0]["ctx"]): IssDecision {

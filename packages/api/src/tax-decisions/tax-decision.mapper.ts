@@ -96,6 +96,7 @@ export function mapRequest(req: TaxCalculationRequest, issuerDefaults: { state: 
   const items: FiscalContextItem[] = req.items.map((i, idx) => {
     const c = i.classification;
     const discounts = i.discounts?.reduce((acc, d) => acc + (d.amount ?? 0), 0);
+    const issDeductions = i.deductions?.reduce((acc, d) => acc + (d.amount ?? 0), 0);
     return {
       id: String(i.id ?? idx + 1),
       description: i.description ?? "",
@@ -106,6 +107,7 @@ export function mapRequest(req: TaxCalculationRequest, issuerDefaults: { state: 
       ...(c?.serviceCode !== undefined ? { serviceCode: c.serviceCode } : {}),
       ...(c?.origin !== undefined && c.origin !== "AUTO" ? { origin: c.origin } : {}),
       ...(discounts !== undefined && discounts > 0 ? { discountCents: discounts } : {}),
+      ...(issDeductions !== undefined && issDeductions > 0 ? { issDeductionCents: issDeductions } : {}),
     };
   });
 
