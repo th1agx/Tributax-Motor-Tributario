@@ -155,6 +155,31 @@ export class RulesAdminController {
     return this.catalog.list();
   }
 
+  /**
+   * Fila de triagem humana (ADR-012 §3): propostas pendentes, IA primeiro
+   * (origem AI_SUGGESTED + reviewReason é a fila de trabalho do editor).
+   * Aprovar/rejeitar continua em POST /v1/rules/:id/transitions.
+   */
+  @Get("review-queue")
+  async reviewQueue(): Promise<{
+    queue: readonly {
+      rule: TaxRule;
+      suggestedByAi: boolean;
+      nextTransitions: readonly RuleStatus[];
+    }[];
+  }> {
+    const pending = (await this.catalog.list())
+      .filter((r) => r.status === "DRAFT" || r.status === "REVIEW")
+      .sort((a, b) => Number(b.origin === "AI_SUGGESTED") - Number(a.origin === "AI_SUGGESTED"));
+    return {
+      queue: pending.map((rule) => ({
+        rule,
+        suggestedByAi: rule.origin === "AI_SUGGESTED",
+        nextTransitions: TRANSITIONS[rule.status],
+      })),
+    };
+  }
+
   @Post(":id/transitions")
   async transition(
     @Param("id") id: string,

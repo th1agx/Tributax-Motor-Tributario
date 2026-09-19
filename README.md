@@ -37,7 +37,9 @@ Fase de arquitetura — sem código de produção ainda.
 - [x] LegislationWatch (ADR-012): diff catálogo × observações, propostas DRAFT `AI_SUGGESTED`
 - [x] Coletor legislativo + RAG (`@tributax/collector`, ADR-013): DOU/RSS → chunking → embeddings → extração LLM com guardrails → WatchReport
 - [x] Servidor MCP (`@tributax/mcp`, ADR-014): agentes de IA clientes calculam via `tributax_simulate_taxes`/`decide`/`list_rules`, sempre pela API REST
-- [ ] NormStore em pgvector, fila de triagem humana, agendamento do agente, IPI, ISS municipal, IBS/CBS (LC 214/25), API keys/multi-tenant
+- [x] NormStore em pgvector (`PostgresNormStore` + migration custom, busca `<=>` cosseno) e fila de triagem humana (`GET /v1/rules/review-queue`)
+- [x] API keys (`TRIBUTAX_API_KEYS`, guard com `@Public`) e rate limit (`RATE_LIMIT_RPM`, token bucket, 429)
+- [ ] Agendamento do agente, IPI, ISS municipal, IBS/CBS (LC 214/25), multi-tenant completo
 
 ## Agente de IA (LLM + RAG)
 

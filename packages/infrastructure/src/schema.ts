@@ -91,3 +91,48 @@ export const parties = pgTable("parties", {
  * migration custom em drizzle/custom/, pois drizzle-kit não gera
  * EXCLUDE USING nativamente. Ver 01_no_overlap.sql.
  */
+
+/** vector do pgvector (ADR-013): embedding como literal "[1,2,...]". */
+const vector = (dimensions: number) =>
+  customType<{ data: readonly number[]; driverData: string }>({
+    dataType() {
+      return `vector(${dimensions})`;
+    },
+    toDriver(value: readonly number[]): string {
+      return `[${value.join(",")}]`;
+    },
+    fromDriver(value: string): readonly number[] {
+      return value.slice(1, -1).split(",").map(Number);
+    },
+  });
+
+/**
+ * Normas coletadas — evidência primária do LegislationWatch (ADR-013).
+ * Append-only: re-coletar a mesma norma é no-op (ON CONFLICT DO NOTHING).
+ */
+export const norms = pgTable("norms", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  url: text("url").notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
+  title: text("title").notNull(),
+  text: text("text").notNull(),
+  source: varchar("source", { length: 32 }).notNull(),
+  collectedAt: timestamp("collected_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Chunks com embedding pgvector — base do RAG (1536 = text-embedding-3-small). */
+export const normChunks = pgTable(
+  "norm_chunks",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    normId: varchar("norm_id", { length: 128 }).notNull(),
+    url: text("url").notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
+    text: text("text").notNull(),
+    embedding: vector(1536)("embedding"),
+  },
+  (t) => ({
+    normIdx: index("norm_chunks_norm").on(t.normId),
+    publishedIdx: index("norm_chunks_published").on(t.publishedAt),
+  }),
+);

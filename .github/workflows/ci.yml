@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: tributax
           POSTGRES_PASSWORD: tributax
@@ -58,10 +58,11 @@ jobs:
         working-directory: packages/infrastructure
         run: npx drizzle-kit migrate
 
-      - name: Apply custom constraints (vigência disjunta)
+      - name: Apply custom constraints (vigência disjunta + pgvector)
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
           psql "$DATABASE_URL" -f packages/infrastructure/drizzle/custom/01_no_overlap.sql
+          psql "$DATABASE_URL" -f packages/infrastructure/drizzle/custom/02_pgvector.sql
 
       - name: Build domain (dist para o seed)
         run: npm run build --workspace=@tributax/domain

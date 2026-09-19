@@ -1,4 +1,5 @@
 import { BadGatewayException, BadRequestException, Body, Controller, Get, Inject, Module, Optional, Param, Post } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { randomUUID } from "node:crypto";
 import { ENGINE_VERSION } from "@tributax/domain";
 import type { TaxDecision } from "@tributax/domain";
@@ -9,6 +10,8 @@ import { defaultPartyStore, issuerProfileAt, PARTY_STORE } from "../parties/part
 import { defaultRuleCatalog, RULE_CATALOG } from "../rules/rule-admin.controller.js";
 import type { IssuerProfile, PartyStore } from "../parties/parties.controller.js";
 import type { RuleCatalogStore } from "../rules/rule-admin.controller.js";
+import { ApiKeyGuard } from "../auth/api-key.guard.js";
+import { RateLimitGuard } from "../auth/rate-limit.guard.js";
 import type { TaxCalculationRequest } from "./tax-decision.request.js";
 
 /**
@@ -205,5 +208,10 @@ export interface TaxCalculationResponse {
 
 @Module({
   controllers: [TaxDecisionsController],
+  providers: [
+    // ordem importa: 401 (key) antes de 429 (limite)
+    { provide: APP_GUARD, useClass: ApiKeyGuard },
+    { provide: APP_GUARD, useClass: RateLimitGuard },
+  ],
 })
 export class TaxDecisionsModule {}

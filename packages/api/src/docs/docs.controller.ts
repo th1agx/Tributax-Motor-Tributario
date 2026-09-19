@@ -2,6 +2,7 @@ import { Controller, Get, Module } from "@nestjs/common";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { Public } from "../auth/api-key.guard.js";
 
 /**
  * Documentação viva: serve a especificação OpenAPI (docs/openapi.yaml,
@@ -30,6 +31,7 @@ const SWAGGER_HTML = `<!doctype html>
 </html>`;
 
 @Controller("/")
+@Public()
 export class DocsController {
   @Get("openapi.yaml")
   openapi(): Promise<string> {
