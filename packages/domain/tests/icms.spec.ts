@@ -16,8 +16,14 @@ describe("módulo ICMS — unidade", () => {
     ).toBe(true);
   });
 
-  it("UF sem alíquota interna no catálogo → NO_RULE_FOUND honesto, nunca chute", () => {
+  it("cobertura nacional: SE (antes fora do catálogo) agora calcula 19%", () => {
     const result = calculateIcms(makeCtx({ issuerState: "SE", recipientState: "SE" }));
+    expect(result.icms.outcome.kind).toBe("TAXED");
+    if (result.icms.outcome.kind === "TAXED") expect(result.icms.outcome.rateBp).toBe(1900);
+  });
+
+  it("fora da vigência da UF → NO_RULE_FOUND honesto, nunca chute (AL antes de 04/2026)", () => {
+    const result = calculateIcms(makeCtx({ issuerState: "AL", recipientState: "AL", asOfDate: new Date("2026-02-01T00:00:00Z") }));
     expect(result.icms.outcome.kind).toBe("NO_RULE_FOUND");
   });
 

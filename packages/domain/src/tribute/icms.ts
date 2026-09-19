@@ -19,16 +19,47 @@ import { DateRange } from "../shared/date-range.js";
 const VALID_FROM_2026 = () => DateRange.from(new Date("2026-01-01T00:00:00Z"));
 
 /**
- * Alíquotas internas por UF (base: RICMS de cada estado).
- * COBERTURA GRADUAL: entram apenas UFs com valor confirmado em fonte
- * pública (agregadores contábeis, 2026); lacunas produzem NO_RULE_FOUND
- * honesto — chute nunca. Toda entrada aguarda conferência no RICMS.
+ * Alíquotas internas por UF — COBERTURA NACIONAL (27/27).
+ * Fontes públicas 2026: FocusNFe "Tabela ICMS 2026" (ago/2026), Conta Azul
+ * "Tabela ICMS 2026" e CDM Contabilidade; fundamento por estado é o RICMS
+ * (anexo de alíquotas). UFs com mudança recente carregam note NEEDS_REVIEW
+ * (fila do LegislationWatch); as demais estão confirmadas em fonte 2026.
  */
-const INTERNAL_RATES: Partial<Record<Uf, number>> = {
-  // confirmadas em testes/fonte
-  MG: 1800, SP: 1800, RJ: 2000, PA: 1700, BA: 1800,
-  // fonte: agregadores contábeis (Cdm/Contabilizei, 2026) — NEEDS_REVIEW
-  CE: 2000, DF: 2000, ES: 1700, GO: 1900, PR: 1800, RS: 1800, SC: 1700,
+interface InternalRate {
+  readonly rateBp: number;
+  /** Vigência própria (ex.: AL 20,5% só a partir de 01/04/2026). */
+  readonly validFrom?: string;
+  readonly note?: string;
+}
+
+const INTERNAL_RATES: Record<Uf, InternalRate> = {
+  AC: { rateBp: 1900, note: "aumentou de 17% para 19% recentemente — conferir Lei/RICMS AC (NEEDS_REVIEW)" },
+  AL: { rateBp: 2050, validFrom: "2026-04-01", note: "20,5% vigente desde 01/04/2026 (antes 19%) (NEEDS_REVIEW)" },
+  AM: { rateBp: 2000 },
+  AP: { rateBp: 1800 },
+  BA: { rateBp: 1800 },
+  CE: { rateBp: 2000 },
+  DF: { rateBp: 2000 },
+  ES: { rateBp: 1700 },
+  GO: { rateBp: 1900 },
+  MA: { rateBp: 2300, note: "maior alíquota geral do país, aumento recente — conferir Lei MA (NEEDS_REVIEW)" },
+  MG: { rateBp: 1800 },
+  MS: { rateBp: 1700 },
+  MT: { rateBp: 1700 },
+  PA: { rateBp: 1700 },
+  PB: { rateBp: 2000 },
+  PE: { rateBp: 2050, note: "20,5% — conferir Lei PE que fixou o adicional (NEEDS_REVIEW)" },
+  PI: { rateBp: 1900 },
+  PR: { rateBp: 1800 },
+  RJ: { rateBp: 2000 },
+  RN: { rateBp: 1900 },
+  RO: { rateBp: 1750, note: "17,5% — única fracionária do país (NEEDS_REVIEW)" },
+  RR: { rateBp: 1700 },
+  RS: { rateBp: 1800 },
+  SC: { rateBp: 1700 },
+  SP: { rateBp: 1800 },
+  SE: { rateBp: 1900 },
+  TO: { rateBp: 1800 },
 };
 
 /**
@@ -63,7 +94,7 @@ export function icmsRuleCatalog(): TaxRule[] {
 }
 
 function internalRateRules(): TaxRule[] {
-  return Object.entries(INTERNAL_RATES).map(([uf, rateBp]): TaxRule => ({
+  return Object.entries(INTERNAL_RATES).map(([uf, r]): TaxRule => ({
     id: `ICMS-INT-${uf}`,
     version: 1,
     tribute: "ICMS",
@@ -74,9 +105,11 @@ function internalRateRules(): TaxRule[] {
       pred("issuerStateIs", { uf }),
       pred("regimeIs", { regime: "NORMAL" }),
     ),
-    effects: [{ type: "applyRate", rateBp }],
+    effects: [{ type: "applyRate", rateBp: r.rateBp }],
     priority: 0,
-    validity: VALID_FROM_2026(),
+    validity: r.validFrom
+      ? DateRange.from(new Date(`${r.validFrom}T00:00:00Z`))
+      : VALID_FROM_2026(),
     status: "ACTIVE",
     origin: "LEGISLATION",
     legalBasis: {
@@ -85,7 +118,7 @@ function internalRateRules(): TaxRule[] {
       year: uf,
       provision: "anexo de alíquotas",
     },
-    reviewReason: `alíquota interna de ${uf} a conferir no RICMS vigente (NEEDS_REVIEW)`,
+    ...(r.note ? { reviewReason: r.note } : {}),
   }));
 }
 
@@ -156,7 +189,11 @@ function interstateRules(): TaxRule[] {
  */
 function difalRules(): TaxRule[] {
   const rules: TaxRule[] = [];
-  for (const [uf, internalBp] of Object.entries(INTERNAL_RATES)) {
+  for (const [uf, r] of Object.entries(INTERNAL_RATES)) {
+    const internalBp = r.rateBp;
+    const validity = r.validFrom
+      ? DateRange.from(new Date(`${r.validFrom}T00:00:00Z`))
+      : VALID_FROM_2026();
     const common = [
       pred("isInterstate"),
       pred("isFinalConsumer"),
@@ -172,7 +209,7 @@ function difalRules(): TaxRule[] {
       condition: andOf(...common),
       effects: [{ type: "applyRate", rateBp: internalBp - 1200 }],
       priority: 0,
-      validity: VALID_FROM_2026(),
+      validity,
       status: "ACTIVE",
       origin: "LEGISLATION",
       legalBasis: {
@@ -196,7 +233,7 @@ function difalRules(): TaxRule[] {
         ),
         effects: [{ type: "applyRate", rateBp: internalBp - 700 }],
         priority: 0,
-        validity: VALID_FROM_2026(),
+        validity,
         status: "ACTIVE",
         origin: "LEGISLATION",
         legalBasis: {

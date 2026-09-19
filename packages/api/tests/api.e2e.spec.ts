@@ -180,6 +180,7 @@ describe("API e2e — /v1/tax-decisions", () => {
         condition: { kind: "and", children: [
           { kind: "predicate", predicate: "isInternal" },
           { kind: "predicate", predicate: "issuerStateIs", args: { uf: "SE" } },
+          { kind: "predicate", predicate: "recipientStateIs", args: { uf: "SE" } },
           { kind: "predicate", predicate: "regimeIs", args: { regime: "NORMAL" } },
         ] },
         effects: [{ type: "exempt" }],
