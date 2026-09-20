@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Headers, NotFoundException, Req } from "@nestjs/common";
+import { Controller, Get, Header, Headers, NotFoundException, Redirect, Req } from "@nestjs/common";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -20,6 +20,11 @@ const DOCS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 @Controller("/")
 @Public()
 export class DocsController {
+  /** Raiz → documentação humana (Swagger UI). */
+  @Get()
+  @Redirect("/docs", 302)
+  root(): void {}
+
   @Get("openapi.yaml")
   openapi(): Promise<string> {
     return readFile(path.join(DOCS_DIR, "openapi.yaml"), "utf-8");
@@ -112,21 +117,69 @@ function frontmatterOf(content: string, file: string): { title: string; descript
   return { title, description };
 }
 
+/** Primeiro parágrafo útil do doc (sem headings/citações/código) como sumário. */
+function firstParagraphOf(content: string): string {
+  for (const block of content.split(/\n\s*\n/)) {
+    const line = block.replace(/\s+/g, " ").trim();
+    if (line && !line.startsWith("#") && !line.startsWith(">") && !line.startsWith("---") && !line.startsWith("```")) {
+      return line.length > 140 ? `${line.slice(0, 137)}...` : line;
+    }
+  }
+  return "";
+}
+
 async function buildLlmsTxt(): Promise<string> {
   const files = await listDocs();
+  const entries = [] as { file: string; title: string; description: string }[];
+  for (const f of files) {
+    const content = await readFile(path.join(DOCS_DIR, f), "utf-8");
+    const fm = frontmatterOf(content, f);
+    entries.push({ file: f, title: fm.title, description: fm.description || firstParagraphOf(content) });
+  }
+  const by = (prefix: string) => entries.filter((e) => e.file.startsWith(prefix));
+
+  const item = (e: { title: string; file: string; description: string }): string =>
+    `- [${e.title}](/docs/${e.file})${e.description ? `: ${e.description}` : ""}`;
+
   const lines = [
     "# Tributax",
     "",
     "> Motor de decisão tributária brasileiro: explicável, versionado, auditável.",
+    "> Valores monetários em centavos (inteiros); percentuais em basis points.",
     "",
-    "## Páginas",
+    "## Comece por aqui",
+    "",
+    "- [Visão geral do produto](/docs/llms-overview.md): o que é, tributos cobertos, como decidir",
+    "- [Contrato do payload](/docs/contracts/payload-spec.md): como montar a requisição (tiers MINIMAL→COMPLETE)",
+    "- [Especificação OpenAPI 3.1](/openapi.yaml): contrato completo das APIs REST (Swagger UI humano: /docs)",
+    "",
+    "## Início rápido",
+    "",
+    "```",
+    'curl -s -X POST {base}/v1/tax-simulations \\',
+    '  -H "Content-Type: application/json" \\',
+    '  -H "x-api-key: SUA_API_KEY" \\',
+    '  -d \'{"correlationId":"demo-1","items":[{"description":"Produto","unitPrice":{"amount":100000}}]}\'',
+    "```",
+    "",
+    "Endpoints: POST /v1/tax-decisions (persiste; aceita x-idempotency-key),",
+    "POST /v1/tax-simulations, /v1/parties, /v1/rules (+ /v1/rules/review-queue).",
+    "Respostas incluem tributos, bases, alíquotas, CFOP/CST, fundamentos legais,",
+    "regras aplicadas e inferências. Conteúdo completo: /llms-full.txt.",
+    "",
+    "## Guias",
+    "",
+    ...by("deploy").map(item),
+    ...by("contracts").map(item),
+    "",
+    "## Decisões de arquitetura (ADRs)",
+    "",
+    ...by("adr").map(item),
+    "",
+    "## Outras páginas",
+    "",
+    ...entries.filter((e) => !/^(adr|deploy|contracts|llms-overview)/.test(e.file)).map(item),
     "",
   ];
-  for (const f of files) {
-    const content = await readFile(path.join(DOCS_DIR, f), "utf-8");
-    const { title, description } = frontmatterOf(content, f);
-    lines.push(`- [${title}](/docs/${f})${description ? `: ${description}` : ""}`);
-  }
-  lines.push("", "## OpenAPI", "", "- [Especificação OpenAPI 3.1](/openapi.yaml): contrato completo das APIs REST", "");
   return lines.join("\n");
 }

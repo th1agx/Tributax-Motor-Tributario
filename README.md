@@ -18,6 +18,7 @@
 </p>
 
 <p align="center">
+  <a href="https://tributax-api.onrender.com/"><code>Documentação interativa (Swagger UI)</code></a> ·
   <a href="https://tributax-api.onrender.com/llms.txt"><code>Documentação para agentes (llms.txt)</code></a> ·
   <a href="https://tributax-api.onrender.com/openapi.yaml"><code>OpenAPI</code></a> ·
   <a href="docs/deploy.md">Guia de deploy</a> ·
