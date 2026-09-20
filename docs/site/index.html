@@ -12,23 +12,44 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#/inicio">
-      <img src="/docs/site/logo.svg" alt="Tributax" width="30" height="30"/>
-      <span>Tributax</span>
-    </a>
-    <nav class="topbar-nav">
-      <a href="#/simulador">Simulador</a>
-      <a href="#/payloads">Payloads</a>
-      <a href="/docs/api" target="_blank" rel="noopener">OpenAPI</a>
-      <a href="/llms.txt" target="_blank" rel="noopener">llms.txt</a>
-    </nav>
+    <div class="topbar-left">
+      <button class="menu-btn" id="menu-btn" aria-label="Menu">☰</button>
+      <a class="brand" href="#/inicio">
+        <img src="/docs/site/logo.svg" alt="Tributax" width="28" height="28"/>
+        <span>Tributax</span>
+      </a>
+    </div>
+
+    <div class="topbar-search">
+      <input id="search" type="search" placeholder="Buscar na documentação…"/>
+    </div>
+
+    <div class="topbar-right">
+      <div class="lang-wrap" id="lang-wrap">
+        <button class="icon-btn lang-btn" id="lang-btn" aria-label="Idioma" title="Idioma">🌐 PT</button>
+        <div class="lang-menu" id="lang-menu">
+          <button data-lang="pt" class="on">Português (BR)</button>
+          <button data-lang="en" disabled>English <small>em breve</small></button>
+        </div>
+      </div>
+      <button class="icon-btn" id="theme-btn" aria-label="Alternar tema" title="Tema claro/escuro">☀︎</button>
+      <nav class="topbar-nav">
+        <a href="#/simulador">Simulador</a>
+        <a href="/docs/api" target="_blank" rel="noopener">OpenAPI</a>
+        <a href="/llms.txt" target="_blank" rel="noopener">llms.txt</a>
+      </nav>
+    </div>
   </header>
 
   <div class="layout">
     <nav class="sidebar" id="sidebar">
-      <div class="search"><input id="search" type="search" placeholder="Buscar…"/></div>
       <div id="nav"></div>
+      <div class="sidebar-foot">
+        <a href="/llms-full.txt" target="_blank" rel="noopener">Conteúdo completo (llms-full.txt)</a>
+      </div>
     </nav>
+
+    <aside class="rail" id="rail"><div class="rail-title">Nesta página</div><div id="rail-nav"></div></aside>
 
     <main class="content" id="content">
       <div class="loading">Carregando…</div>

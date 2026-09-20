@@ -54,6 +54,7 @@
   // ---------- busca simples: filtra itens da nav ----------
   function bindSearch() {
     var input = document.getElementById("search");
+    if (!input) return;
     input.addEventListener("input", function () {
       var q = input.value.toLowerCase();
       document.querySelectorAll(".nav-item").forEach(function (el) {
@@ -103,8 +104,35 @@
   }
 
   // ---------- melhorias pós-render ----------
+  function buildRail() {
+    var rail = document.getElementById("rail-nav");
+    if (!rail) return;
+    var h2s = Array.prototype.slice.call(document.querySelectorAll("#content h2"));
+    if (!h2s.length) { document.getElementById("rail").style.display = "none"; return; }
+    document.getElementById("rail").style.display = "";
+    rail.innerHTML = h2s.map(function (h, i) {
+      if (!h.id) h.id = "sec-" + i + "-" + h.textContent.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
+      return '<a href="#' + h.id + '" data-target="' + h.id + '">' + h.textContent + "</a>";
+    }).join("");
+    var links = Array.prototype.slice.call(rail.querySelectorAll("a"));
+    var onScroll = function () {
+      var current = h2s[0];
+      for (var i = 0; i < h2s.length; i++) {
+        if (h2s[i].getBoundingClientRect().top < 120) current = h2s[i];
+      }
+      links.forEach(function (a) {
+        a.classList.toggle("active", a.getAttribute("data-target") === (current && current.id));
+      });
+    };
+    window.removeEventListener("scroll", window.__railScroll || function () {});
+    window.__railScroll = onScroll;
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  }
+
   function enhancePage(page) {
     enhancePayloads();
+    buildRail();
     if (page === "simulador") mountSimulator();
     // links relativos .md da doc oficial → servidos pela própria API
     contentFixLinks();
@@ -267,6 +295,35 @@
       "<div class='sim-total'><span>Carga total</span><span>" + brl(total) + "</span></div>" +
       "<details class='raw'><summary>Ver resposta completa (JSON)</summary><pre><code>" +
       JSON.stringify(j, null, 2).replace(/</g, "&lt;") + "</code></pre></details>";
+  }
+
+  // ---------- tema claro/escuro ----------
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    var b = document.getElementById("theme-btn");
+    if (b) b.textContent = t === "light" ? "☾" : "☀︎";
+    try { localStorage.setItem("tributax_theme", t); } catch (e) {}
+  }
+  var themeBtn = document.getElementById("theme-btn");
+  if (themeBtn) themeBtn.addEventListener("click", function () {
+    applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light");
+  });
+  applyTheme((function () { try { return localStorage.getItem("tributax_theme") || "dark"; } catch (e) { return "dark"; } })());
+
+  // ---------- menu de idioma ----------
+  var langBtn = document.getElementById("lang-btn");
+  var langMenu = document.getElementById("lang-menu");
+  if (langBtn && langMenu) {
+    langBtn.addEventListener("click", function (e) { e.stopPropagation(); langMenu.classList.toggle("open"); });
+    document.addEventListener("click", function () { langMenu.classList.remove("open"); });
+    langMenu.querySelectorAll("button[data-lang]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        langMenu.querySelectorAll("button").forEach(function (x) { x.classList.remove("on"); });
+        b.classList.add("on");
+        langBtn.textContent = "🌐 " + (b.getAttribute("data-lang") === "en" ? "EN" : "PT");
+        langMenu.classList.remove("open");
+      });
+    });
   }
 
   // ---------- boot ----------
