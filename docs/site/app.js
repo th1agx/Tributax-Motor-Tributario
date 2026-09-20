@@ -219,14 +219,22 @@
 
     var keyInput = document.getElementById("sim-key");
     keyInput.value = localStorage.getItem("tributax_docs_api_key") || DEMO_KEY;
+    if (localStorage.getItem("tributax_docs_api_key")) document.getElementById("sim-key-field").style.display = "";
     keyInput.addEventListener("change", function () { localStorage.setItem("tributax_docs_api_key", keyInput.value.trim()); });
 
     document.getElementById("sim-run").addEventListener("click", runSimulation);
+    var useOwn = document.getElementById("sim-use-own");
+    if (useOwn) useOwn.addEventListener("click", function (e) {
+      e.preventDefault();
+      document.getElementById("sim-key-field").style.display = "";
+      document.getElementById("sim-key").focus();
+    });
   }
 
   function runSimulation() {
     var result = document.getElementById("sim-result");
-    var key = (document.getElementById("sim-key").value || "").trim();
+    var keyField = document.getElementById("sim-key");
+    var key = (keyField && keyField.offsetParent ? keyField.value : "").trim() || DEMO_KEY;
     if (!key) {
       result.innerHTML = '<div class="sim-err">Informe uma API key válida (fica salva só no seu navegador).</div>';
       return;
