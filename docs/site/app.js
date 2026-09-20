@@ -3,6 +3,7 @@
   "use strict";
 
   var API = location.origin;
+  var DEMO_KEY = "842f112824764f36d3b54dce0f13b0e9901980d9112bf966"; // tenant docs-demo, 12 req/min
   var PAGES = [
     { group: "Primeiros passos", items: [
       { id: "inicio", label: "Visão geral" },
@@ -202,7 +203,7 @@
     mount.innerHTML =
       '<div class="sim-grid">' +
       '<div class="sim-panel"><h3>Operação</h3>' +
-        '<div class="field"><label>API key (x-api-key)</label><input id="sim-key" type="password" placeholder="cole sua API key"/></div>' +
+        '<div class="field"><label>API key</label><input id="sim-key" type="password" placeholder="cole sua API key"/></div><div class="sim-key-note">Já vem com a chave de demonstração (12 cálculos/min). Use a sua própria chave para integração real.</div>' +
         '<div class="field"><label>Descrição do item</label><input id="sim-desc" type="text" value="Notebook"/></div>' +
         '<div class="field-row"><div class="field"><label>Valor (R$)</label><input id="sim-price" type="number" min="0.01" step="0.01" value="3500.00"/></div>' +
         '<div class="field"><label>NCM (opcional)</label><input id="sim-ncm" type="text" value="84713012"/></div></div>' +
@@ -211,13 +212,13 @@
         '<div class="field-row"><div class="field"><label>Tipo de operação</label><select id="sim-kind"><option value="AUTO">Automático</option><option value="SALE_GOODS">Venda de mercadoria</option><option value="SERVICE_PROVISION">Prestação de serviço</option><option value="EXPORT">Exportação</option></select></div>' +
         '<div class="field"><label>Código de serviço (LC 116)</label><input id="sim-svc" type="text" placeholder="ex.: 1.05"/></div></div>' +
         '<button class="sim-run" id="sim-run">Calcular tributos</button>' +
-        '<div class="sim-key-note">Sem uma API key? A documentação de início rápido explica como criar sua conta e chave.</div>' +
+        
       "</div>" +
       '<div class="sim-panel"><h3>Resultado</h3><div class="sim-result" id="sim-result"><div style="color:var(--ink-mute);font-size:14px">Preencha a operação e clique em <b>Calcular tributos</b>.</div></div></div>' +
       "</div>";
 
     var keyInput = document.getElementById("sim-key");
-    keyInput.value = localStorage.getItem("tributax_docs_api_key") || "";
+    keyInput.value = localStorage.getItem("tributax_docs_api_key") || DEMO_KEY;
     keyInput.addEventListener("change", function () { localStorage.setItem("tributax_docs_api_key", keyInput.value.trim()); });
 
     document.getElementById("sim-run").addEventListener("click", runSimulation);
