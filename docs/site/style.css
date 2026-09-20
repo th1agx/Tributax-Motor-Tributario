@@ -19,7 +19,7 @@
 html, body { margin: 0; padding: 0; }
 body {
   background: var(--paper); color: var(--ink);
-  font-family: var(--serif-body); font-size: 18.5px; line-height: 1.72;
+  font-family: var(--serif-body); font-size: 16.5px; line-height: 1.7;
   font-optical-sizing: auto;
 }
 
@@ -42,22 +42,20 @@ body {
 .topbar-nav a:hover { color: var(--ink); border-image: linear-gradient(var(--mark), var(--mark)); border-bottom: 2px solid var(--mark); }
 
 /* ---------- layout ---------- */
-.layout {
-  display: grid;
-  grid-template-columns: 250px minmax(0, 900px) 210px;
-  justify-content: center;
-  gap: 0 clamp(24px, 4vw, 72px);
+/* layout padrão de documentação: sidebar fixa, conteúdo ocupa o restante */
+.layout { display: flex; align-items: flex-start; }
+.sidebar {
+  width: 260px; min-width: 260px; min-height: calc(100vh - 61px);
+  border-right: 1px solid var(--line); padding: 22px 18px 60px;
+  position: sticky; top: 61px; height: calc(100vh - 61px); overflow-y: auto;
 }
-.sidebar { border-right: 1px solid var(--line); padding: 26px 18px 60px; }
-.content { max-width: none; padding: 56px 0 140px; width: 100%; }
-@media (max-width: 1360px) {
-  .layout { grid-template-columns: 250px minmax(0, 900px); gap: 0 32px; }
-  .rail { display: none; }
+.content { flex: 1 1 auto; max-width: 960px; padding: 40px 48px 120px; margin: 0; width: auto; }
 }
 @media (max-width: 960px) {
-  .layout { grid-template-columns: 1fr; }
+  .layout { flex-direction: column; }
+  .sidebar { position: static; height: auto; min-height: 0; width: auto; min-width: 0; }
   .sidebar { border-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 20px; }
-  .content { padding: 36px 22px 110px; }
+  .content { padding: 28px 22px 100px; }
   .topbar { padding: 12px 20px; }
 }
 
@@ -82,14 +80,14 @@ body {
 
 /* ---------- tipografia do conteúdo ---------- */
 .content h1 {
-  font-family: var(--serif-display); font-weight: 480; font-size: clamp(34px, 5vw, 52px);
-  line-height: 1.08; letter-spacing: -0.012em; margin: 0 0 14px;
+  font-family: var(--serif-display); font-weight: 500; font-size: clamp(30px, 4vw, 38px);
+  line-height: 1.15; letter-spacing: -0.01em; margin: 0 0 12px;
 }
 .content h2 {
-  font-family: var(--serif-display); font-weight: 520; font-size: 27px; line-height: 1.2;
-  margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line-strong);
+  font-family: var(--serif-display); font-weight: 540; font-size: 23px; line-height: 1.25;
+  margin-top: 44px; padding-top: 20px; border-top: 1px solid var(--line-strong);
 }
-.content h3 { font-family: var(--serif-display); font-weight: 540; font-size: 20px; margin-top: 36px; }
+.content h3 { font-family: var(--serif-display); font-weight: 560; font-size: 18.5px; margin-top: 30px; }
 .content p { margin: 16px 0; color: var(--ink); }
 .content ul, .content ol { padding-left: 26px; }
 .content li { margin: 7px 0; }
@@ -124,7 +122,7 @@ body {
 /* ---------- abertura editorial (statement) ---------- */
 .statement {
   font-family: var(--serif-display); font-weight: 420; font-style: italic;
-  font-size: clamp(21px, 2.6vw, 27px); line-height: 1.4; color: var(--ink);
+  font-size: clamp(19px, 2.2vw, 23px); line-height: 1.45; color: var(--ink);
   margin: 8px 0 20px;
 }
 .statement em, .content em mark, mark, .content mark {
@@ -135,7 +133,7 @@ mark strong, mark b { color: #0d0d10; }
 .field input::placeholder, .field select { color: var(--ink); }
 .field input::placeholder { color: var(--ink-mute); }
 .field select option { background: var(--paper-2); color: var(--ink); }
-.lede { font-size: 19px; color: var(--ink-soft); }
+.lede { font-size: 17.5px; color: var(--ink-soft); }
 .byline {
   font-family: var(--sans); font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
   color: var(--ink-mute); margin-bottom: 26px;
@@ -218,9 +216,3 @@ details.raw summary {
 }
 .toast.show { opacity: 1; }
 
-/* ---------- rail "nesta página" ---------- */
-.rail { padding: 56px 28px 80px 8px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-.rail-title { font-family: var(--sans); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-mute); margin-bottom: 14px; }
-.rail a { display: block; font-size: 14px; font-family: var(--serif-body); color: var(--ink-mute); text-decoration: none; padding: 4px 0 4px 14px; border-left: 1px solid var(--line); }
-.rail a:hover { color: var(--ink); }
-.rail a.active { color: var(--ink); font-style: italic; border-left: 2px solid var(--mark); padding-left: 13px; }
