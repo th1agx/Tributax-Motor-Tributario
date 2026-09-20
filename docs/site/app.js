@@ -3,7 +3,7 @@
   "use strict";
 
   var API = location.origin;
-  var DEMO_KEY = "842f112824764f36d3b54dce0f13b0e9901980d9112bf966"; // tenant docs-demo, 12 req/min
+  var DEMO_KEY = "842f112824764f36d3b54dce0f13b0e9901980d9112bf966"; // tenant docs-demo, 3 req/min
   var PAGES = [
     { group: "Primeiros passos", items: [
       { id: "inicio", label: "Visão geral" },
@@ -203,7 +203,8 @@
     mount.innerHTML =
       '<div class="sim-grid">' +
       '<div class="sim-panel"><h3>Operação</h3>' +
-        '<div class="field"><label>API key</label><input id="sim-key" type="password" placeholder="cole sua API key"/></div><div class="sim-key-note">Já vem com a chave de demonstração (12 cálculos/min). Use a sua própria chave para integração real.</div>' +
+        '<div class="sim-key-note">Calculando com a chave de demonstração pública (3 consultas por minuto). <a href="#" id="sim-use-own">Usar minha API key</a></div>' +
+        '<div class="field" id="sim-key-field" style="display:none"><label>API key</label><input id="sim-key" type="password" placeholder="cole sua API key"/></div>' +
         '<div class="field"><label>Descrição do item</label><input id="sim-desc" type="text" value="Notebook"/></div>' +
         '<div class="field-row"><div class="field"><label>Valor (R$)</label><input id="sim-price" type="number" min="0.01" step="0.01" value="3500.00"/></div>' +
         '<div class="field"><label>NCM (opcional)</label><input id="sim-ncm" type="text" value="84713012"/></div></div>' +
