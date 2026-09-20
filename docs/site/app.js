@@ -6,30 +6,36 @@
   var PAGES = [
     { group: "Primeiros passos", items: [
       { id: "inicio", label: "Visão geral" },
+      { id: "conceitos", label: "O que é (e o que não é)" },
       { id: "comeco-rapido", label: "Início rápido" },
-      { id: "autenticacao", label: "Autenticação & chaves" },
+      { id: "autenticacao", label: "Autenticação e chaves" },
+    ]},
+    { group: "Documentos e tributos", items: [
+      { id: "documentos", label: "NF-e, NFC-e e NFS-e" },
+      { id: "tributos", label: "Tributos e cobertura" },
+      { id: "reforma-tributaria", label: "Reforma Tributária (CBS/IBS)" },
     ]},
     { group: "Ferramentas", items: [
       { id: "simulador", label: "Simulador" },
       { id: "payloads", label: "Payloads por cenário" },
     ]},
-    { group: "Referência", items: [
+    { group: "Referência da API", items: [
       { id: "api", label: "Endpoints" },
       { id: "resposta", label: "Entendendo a resposta" },
-      { id: "erros", label: "Erros & status" },
-      { id: "tributos", label: "Tributos & cobertura" },
+      { id: "erros", label: "Erros e status" },
     ]},
     { group: "Integração", items: [
       { id: "sdk", label: "SDK TypeScript" },
-      { id: "mcp", label: "Agentes & MCP" },
-      { id: "webhooks", label: "Webhooks & idempotência" },
+      { id: "mcp", label: "Agentes e MCP" },
+      { id: "webhooks", label: "Webhooks e idempotência" },
     ]},
     { group: "Mais", items: [
-      { id: "deploy", label: "Deploy & operação" },
+      { id: "deploy", label: "Deploy e operação" },
       { id: "para-llms", label: "Documentação para LLMs" },
       { id: "adrs", label: "Decisões de arquitetura" },
     ]},
   ];
+
 
   // ---------- nav ----------
   function buildNav() {
