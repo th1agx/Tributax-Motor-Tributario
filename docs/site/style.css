@@ -67,7 +67,7 @@ body {
 }
 .lang-menu.open { display: block; }
 .lang-menu button {
-  display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%;
+  display: flex; justify-content: flex-start; align-items: center; gap: 10px; width: 100%;
   background: none; border: 0; color: var(--ink); font-family: var(--sans); font-size: 13.5px;
   padding: 8px 10px; border-radius: 6px; cursor: pointer; text-align: left;
 }
@@ -75,6 +75,7 @@ body {
 .lang-menu button.on { font-weight: 600; }
 .lang-menu button[disabled] { color: var(--ink-mute); cursor: default; }
 .lang-menu small { color: var(--ink-mute); font-size: 11px; }
+.lang-menu button svg { flex-shrink: 0; }
 .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; color: var(--ink); }
 .brand span { font-family: var(--serif-display); font-weight: 560; font-size: 21px; letter-spacing: .01em; }
 .brand img { border-radius: 6px; }
