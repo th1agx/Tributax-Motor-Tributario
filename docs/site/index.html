@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Tributax — Documentação</title>
+  <link rel="icon" type="image/svg+xml" href="/docs/site/favicon.svg"/>
+  <link rel="stylesheet" href="/docs/site/style.css"/>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/inicio">
+      <img src="/docs/site/logo.svg" alt="Tributax" width="34" height="34"/>
+      <span>Tributax <small>docs</small></span>
+    </a>
+    <div class="topbar-right">
+      <code class="api-url" id="api-url"></code>
+      <a class="btn ghost" href="/docs/api" target="_blank" rel="noopener">Swagger UI</a>
+      <a class="btn primary" href="#/simulador">Simulador</a>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="sidebar">
+      <div class="search"><input id="search" type="search" placeholder="Buscar na documentação…"/></div>
+      <div id="nav"></div>
+      <div class="sidebar-foot">
+        <a href="/llms.txt" target="_blank" rel="noopener">📄 llms.txt</a>
+        <a href="/llms-full.txt" target="_blank" rel="noopener">📄 llms-full.txt</a>
+      </div>
+    </nav>
+
+    <main class="content" id="content">
+      <div class="loading">Carregando…</div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+  <script src="/docs/site/app.js"></script>
+</body>
+</html>

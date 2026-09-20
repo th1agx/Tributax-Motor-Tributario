@@ -235,13 +235,17 @@ describe("API e2e — /v1/tax-decisions", () => {
       .expect(400);
   });
 
-  it("/openapi.yaml serve o contrato; /docs serve o Swagger UI", async () => {
+  it("/openapi.yaml serve o contrato; /docs serve o site; /docs/api serve o Swagger UI", async () => {
     const spec = await request(app.getHttpServer()).get("/openapi.yaml").expect(200);
     expect(spec.text).toMatch(/openapi: 3\.1\.0/);
     expect(spec.text).toContain("/v1/tax-decisions");
     expect(spec.text).toContain("/v1/rules/{id}/transitions");
 
-    const ui = await request(app.getHttpServer()).get("/docs").expect(200);
+    const site = await request(app.getHttpServer()).get("/docs").expect(200);
+    expect(site.text).toMatch(/Tributax — Documentação/);
+    const css = await request(app.getHttpServer()).get("/docs/site/style.css").expect(200);
+    expect(css.text).toContain("--yellow: #ffd60a");
+    const ui = await request(app.getHttpServer()).get("/docs/api").expect(200);
     expect(ui.text).toMatch(/swagger-ui/i);
   });
 

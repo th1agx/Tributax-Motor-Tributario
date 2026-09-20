@@ -6,6 +6,12 @@ import { DocsController } from "../src/docs/docs.controller.js";
  * Markdown por página, manifesto índice, concatenado completo e negociação
  * por Accept: text/markdown. Tudo público (sem API key).
  */
+
+function fakeRes() {
+  const headers: Record<string, string> = {};
+  return { setHeader: (k: string, v: string) => { headers[k] = v; }, headers };
+}
+
 describe("DocsController — documentação para agentes", () => {
   const c = new DocsController();
 
@@ -20,7 +26,7 @@ describe("DocsController — documentação para agentes", () => {
     const md = await c.docs("text/markdown");
     expect(md).toContain("# Tributax");
     const html = await c.docs("text/html");
-    expect(html).toContain("swagger-ui");
+    expect(html).toContain("Tributax — Documentação");
   });
 
   it("/llms.txt lista as páginas com título do frontmatter", async () => {
@@ -39,16 +45,16 @@ describe("DocsController — documentação para agentes", () => {
   });
 
   it("páginas reais: ADR e payload-spec em Markdown puro", async () => {
-    const adr = await c.docPage({ params: { docPath: "adr/ADR-013-coletor-rag.md" } });
+    const adr = await c.docPage({ params: { "0": "adr/ADR-013-coletor-rag.md" } }, fakeRes());
     expect(adr).toContain("LegislationWatch");
-    const spec = await c.docPage({ params: { docPath: "contracts/payload-spec.md" } });
+    const spec = await c.docPage({ params: { "0": "contracts/payload-spec.md" } }, fakeRes());
     expect(spec.length).toBeGreaterThan(500);
   });
 
   it("path traversal e não-markdown são rejeitados (404, nunca arquivo fora de docs/)", async () => {
-    await expect(c.docPage({ params: { docPath: "../package.json" } })).rejects.toThrow();
-    await expect(c.docPage({ params: { docPath: "../../etc/passwd" } })).rejects.toThrow();
-    await expect(c.docPage({ params: { docPath: "openapi.yaml" } })).rejects.toThrow(/só há páginas \.md/);
-    await expect(c.docPage({ params: { docPath: "inexistente.md" } })).rejects.toThrow(/não encontrada/);
+    await expect(c.docPage({ params: { "0": "../package.json" } }, fakeRes())).rejects.toThrow();
+    await expect(c.docPage({ params: { "0": "../../etc/passwd" } }, fakeRes())).rejects.toThrow();
+    await expect(c.docPage({ params: { "0": "openapi.yaml" } }, fakeRes())).rejects.toThrow(/só há páginas \.md/);
+    await expect(c.docPage({ params: { "0": "inexistente.md" } }, fakeRes())).rejects.toThrow(/não encontrada/);
   });
 });

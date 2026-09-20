@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Tributax">
+  <defs>
+    <!-- borda perfurada do selo: recorte em círculos regulares -->
+    <mask id="perf">
+      <rect x="0" y="0" width="512" height="512" fill="white"/>
+      <g fill="black">
+        <circle cx="106" cy="106" r="16"/><circle cx="256" cy="106" r="16"/><circle cx="406" cy="106" r="16"/>
+        <circle cx="106" cy="256" r="16"/><circle cx="406" cy="256" r="16"/>
+        <circle cx="106" cy="406" r="16"/><circle cx="256" cy="406" r="16"/><circle cx="406" cy="406" r="16"/>
+        <circle cx="181" cy="106" r="16"/><circle cx="331" cy="106" r="16"/>
+        <circle cx="181" cy="406" r="16"/><circle cx="331" cy="406" r="16"/>
+        <circle cx="106" cy="181" r="16"/><circle cx="106" cy="331" r="16"/>
+        <circle cx="406" cy="181" r="16"/><circle cx="406" cy="331" r="16"/>
+      </g>
+    </mask>
+  </defs>
+
+  <!-- fundo preto fosco -->
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="#0b0b0d"/>
+
+  <!-- selo amarelo com borda perfurada -->
+  <g mask="url(#perf)">
+    <rect x="76" y="76" width="360" height="360" rx="20" fill="#ffd60a"/>
+  </g>
+
+  <!-- filete interno do carimbo -->
+  <rect x="118" y="118" width="276" height="276" rx="12" fill="none" stroke="#0b0b0d" stroke-width="10"/>
+
+  <!-- T em faixas empilhadas (faixas de alíquota) -->
+  <g fill="#0b0b0d">
+    <!-- travessão: faixa superior (alíquota mais alta) -->
+    <rect x="156" y="156" width="200" height="44" rx="8"/>
+    <!-- faixa 2 -->
+    <rect x="156" y="212" width="200" height="44" rx="8" opacity="0.82"/>
+    <!-- haste do T -->
+    <rect x="232" y="212" width="48" height="144" rx="8"/>
+    <!-- faixa 3 (apenas nos lados da haste) -->
+    <rect x="156" y="268" width="56" height="44" rx="8" opacity="0.62"/>
+    <rect x="300" y="268" width="56" height="44" rx="8" opacity="0.62"/>
+    <!-- faixa 4, base da haste -->
+    <rect x="156" y="324" width="56" height="44" rx="8" opacity="0.4"/>
+    <rect x="300" y="324" width="56" height="44" rx="8" opacity="0.4"/>
+  </g>
+
+  <!-- ponto de decisão: o "cento por cento" -->
+  <circle cx="342" cy="346" r="14" fill="#0b0b0d"/>
+</svg>

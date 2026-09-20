@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Headers, NotFoundException, Redirect, Req } from "@nestjs/common";
+import { Controller, Get, Header, Headers, NotFoundException, Redirect, Req, Res } from "@nestjs/common";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -30,12 +30,20 @@ export class DocsController {
     return readFile(path.join(DOCS_DIR, "openapi.yaml"), "utf-8");
   }
 
-  /** Swagger UI; Accept: text/markdown devolve a visão geral em MD. */
+  /** Site de documentação; Accept: text/markdown devolve a visão geral em MD. */
   @Get("docs")
+  @Header("content-type", "text/html; charset=utf-8")
   async docs(@Headers("accept") accept: string | undefined): Promise<string> {
     if (accept?.includes("text/markdown")) {
       return this.markdownPage("llms-overview.md");
     }
+    return readFile(path.join(DOCS_DIR, "site", "index.html"), "utf-8");
+  }
+
+  /** Swagger UI (interface interativa do OpenAPI). */
+  @Get("docs/api")
+  @Header("content-type", "text/html; charset=utf-8")
+  async swagger(): Promise<string> {
     const { SWAGGER_HTML } = await import("./swagger.js");
     return SWAGGER_HTML;
   }
@@ -71,11 +79,28 @@ export class DocsController {
     return parts.join("\n\n---\n\n");
   }
 
-  /** Qualquer página de docs em Markdown: /docs/adr/ADR-001-linguagem.md etc. */
-  @Get("docs/*docPath")
-  @Header("content-type", "text/markdown; charset=utf-8")
-  async docPage(@Req() req: { params: { docPath?: string } }): Promise<string> {
-    return this.markdownPage(req.params.docPath);
+  /** Páginas de docs em Markdown e assets do site: /docs/adr/ADR-001….md, /docs/site/app.js. */
+  @Get("docs/*")
+  async docPage(
+    @Req() req: { params: Record<string, string> },
+    @Res({ passthrough: true }) res: { setHeader: (k: string, v: string) => void },
+  ): Promise<string> {
+    const rel = req.params["0"] ?? ""; // Express 4: wildcard posicional
+    if (rel.startsWith("site/")) {
+      const safe = path.normalize(rel).replace(/^([.][.][/\\])+/, "");
+      const target = path.join(DOCS_DIR, safe);
+      if (!target.startsWith(path.join(DOCS_DIR, "site"))) {
+        throw new NotFoundException({ error: "NOT_FOUND", message: "asset ausente" });
+      }
+      try {
+        res.setHeader("content-type", contentTypeOf(target));
+        return await readFile(target, "utf-8");
+      } catch {
+        throw new NotFoundException({ error: "NOT_FOUND", message: `asset não encontrado: ${rel}` });
+      }
+    }
+    res.setHeader("content-type", "text/markdown; charset=utf-8");
+    return this.markdownPage(rel);
   }
 
   private async markdownPage(rel: string | undefined): Promise<string> {
@@ -93,12 +118,12 @@ export class DocsController {
   }
 }
 
-/** Índice de todas as páginas .md de docs/ (recursivo, separador normalizado). */
-async function listDocs(): Promise<readonly string[]> {
+/** Índice de todas as páginas .md de docs/ (recursivo, separador normalizado). */async function listDocs(): Promise<readonly string[]> {
   const { readdir } = await import("node:fs/promises");
   const out: string[] = [];
   async function walk(dir: string, prefix: string): Promise<void> {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
+      if (entry.isDirectory() && entry.name === "site") continue; // site humano, não índice llms
       const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) await walk(path.join(dir, entry.name), rel);
       else if (entry.name.endsWith(".md")) out.push(rel);
@@ -106,6 +131,17 @@ async function listDocs(): Promise<readonly string[]> {
   }
   await walk(DOCS_DIR, "");
   return out.sort();
+}
+
+/** Content-type mínimo para os assets estáticos do site de documentação. */
+function contentTypeOf(file: string): string {
+  if (file.endsWith(".html")) return "text/html; charset=utf-8";
+  if (file.endsWith(".css")) return "text/css; charset=utf-8";
+  if (file.endsWith(".js")) return "application/javascript; charset=utf-8";
+  if (file.endsWith(".svg")) return "image/svg+xml";
+  if (file.endsWith(".md")) return "text/markdown; charset=utf-8";
+  if (file.endsWith(".png")) return "image/png";
+  return "application/octet-stream";
 }
 
 /** Frontmatter → título/descrição para o manifesto (fallback: nome do arquivo). */
