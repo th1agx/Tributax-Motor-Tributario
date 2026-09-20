@@ -15,6 +15,7 @@ import type { RuleCatalogStore } from "./rules/rule-admin.controller.js";
 import { setTenantStore, EnvTenantStore } from "./auth/tenant-store.js";
 import { TenantsController, TENANT_ADMIN_STORE } from "./tenants/tenants.controller.js";
 import { WebhooksController } from "./webhooks/webhooks.controller.js";
+import { BrandedExceptionFilter } from "./branding.exception.filter.js";
 import type { TenantAdminStore } from "./tenants/tenants.controller.js";
 
 /**
@@ -75,6 +76,7 @@ async function bootstrap(): Promise<void> {
       ...(tenantAdminStore ? [{ provide: TENANT_ADMIN_STORE, useValue: tenantAdminStore }] : []),
     ],
   });
+  app.useGlobalFilters(new BrandedExceptionFilter());
   app.enableShutdownHooks();
   await app.listen(Number(process.env.PORT ?? 3000));
 }
