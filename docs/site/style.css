@@ -1,15 +1,15 @@
 /* Tributax docs — editorial "statement serif": serifa de display (Fraunces),
-   corpo em serifa de leitura (Newsreader), papel, amarelo como marca-texto. */
+   corpo em serifa de leitura (Newsreader), fundo escuro, amarelo como marca-texto. */
 
 :root {
-  --paper: #fbfaf6;
-  --paper-2: #f3f1ea;
-  --ink: #1b1a17;
-  --ink-soft: #4c4a44;
-  --ink-mute: #8a877d;
-  --line: #ddd9cd;
-  --line-strong: #1b1a17;
-  --mark: #ffe066;       /* marca-texto amarela */
+  --paper: #0d0d10;
+  --paper-2: #16161b;
+  --ink: #eceae2;
+  --ink-soft: #b8b5aa;
+  --ink-mute: #7c7a72;
+  --line: #2b2b32;
+  --line-strong: #514e46;
+  --mark: #ffd60a;       /* marca-texto amarela */
   --serif-display: "Fraunces", Georgia, "Times New Roman", serif;
   --serif-body: "Newsreader", Georgia, serif;
   --sans: "Inter", system-ui, sans-serif;
@@ -96,7 +96,7 @@ body {
   background: var(--paper-2); border-left: 2px solid var(--line-strong);
   border-radius: 0; padding: 18px 22px; overflow-x: auto; margin: 22px 0;
 }
-.content pre code { background: none; padding: 0; font-size: 13.5px; line-height: 1.65; color: #33312b; }
+.content pre code { background: none; padding: 0; font-size: 13.5px; line-height: 1.65; color: #d6d3c7; }
 .content blockquote {
   margin: 26px 0; padding: 2px 0 2px 22px; border-left: 2px solid var(--mark);
   font-style: italic; color: var(--ink-soft);
@@ -176,16 +176,16 @@ body {
   background: var(--ink); color: var(--paper); border: 0; border-radius: 2px;
   padding: 11px 22px; cursor: pointer; margin-top: 6px;
 }
-.sim-run:hover { background: #000; box-shadow: 4px 4px 0 var(--mark); }
-.sim-err { color: #a33; font-family: var(--mono); font-size: 13px; margin-top: 12px; white-space: pre-wrap; }
+.sim-run:hover { background: #f4f2ea; box-shadow: 4px 4px 0 var(--mark); }
+.sim-err { color: #e08e8e; font-family: var(--mono); font-size: 13px; margin-top: 12px; white-space: pre-wrap; }
 .sim-key-note { font-size: 14px; color: var(--ink-mute); font-style: italic; margin-top: 14px; }
 .sim-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .sim-table th { font-size: 10.5px; }
 .sim-table td { font-family: var(--mono); font-size: 13px; }
 .sim-table td:first-child { font-family: var(--serif-body); font-size: 15px; font-weight: 600; }
 .sim-table td.num { text-align: right; }
-.outcome-TAXED { color: #1c6b3c; font-weight: 600; }
-.outcome-EXEMPT, .outcome-IMMUNE, .outcome-NON_TAXABLE, .outcome-ZERO_RATED { color: #12556e; font-weight: 600; }
+.outcome-TAXED { color: #71c791; font-weight: 600; }
+.outcome-EXEMPT, .outcome-IMMUNE, .outcome-NON_TAXABLE, .outcome-ZERO_RATED { color: #85c8e0; font-weight: 600; }
 .outcome-NO_RULE_FOUND { color: var(--ink-mute); }
 .sim-total {
   margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line-strong);
@@ -195,7 +195,7 @@ body {
 details.raw { margin-top: 18px; }
 details.raw summary {
   cursor: pointer; font-family: var(--sans); font-size: 12.5px; color: var(--ink-soft);
-  border-bottom: 1px dotted var(--ink-mute); display: inline-block;
+  border-bottom: 1px dotted var(--ink-soft); display: inline-block;
 }
 .toast {
   position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
