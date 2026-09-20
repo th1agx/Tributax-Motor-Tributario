@@ -19,7 +19,7 @@ curl -X POST {BASE_URL}/v1/webhooks \
 
 ### Assinatura HMAC
 
-Todo delivery assinado com `TRIBUTAX_WEBHOOK_SECRET` no header — **verifique antes de confiar**:
+Todo delivery assinado com `TRIBUTAX_WEBHOOK_SECRET` no header, **verifique antes de confiar**:
 
 ```
 x-tributax-signature: sha256=<hmac_sha256(corpoBruto, SECRET)>

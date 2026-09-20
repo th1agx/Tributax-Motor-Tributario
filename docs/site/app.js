@@ -10,7 +10,7 @@
       { id: "autenticacao", label: "Autenticação & chaves" },
     ]},
     { group: "Ferramentas", items: [
-      { id: "simulador", label: "Simulador ⚡" },
+      { id: "simulador", label: "Simulador" },
       { id: "payloads", label: "Payloads por cenário" },
     ]},
     { group: "Referência", items: [
@@ -26,8 +26,8 @@
     ]},
     { group: "Mais", items: [
       { id: "deploy", label: "Deploy & operação" },
-      { id: "para-llms", label: "Documentação para LLMs 🤖" },
-      { id: "adrs", label: "ADRs (decisões)" },
+      { id: "para-llms", label: "Documentação para LLMs" },
+      { id: "adrs", label: "Decisões de arquitetura" },
     ]},
   ];
 
@@ -138,8 +138,8 @@
       var actions = document.createElement("div");
       actions.className = "payload-actions";
       var dl = document.createElement("button");
-      dl.className = "btn primary";
-      dl.textContent = "⬇ Baixar .json";
+      dl.className = "dl-link";
+      dl.textContent = "Baixar .json";
       dl.addEventListener("click", function () {
         var blob = new Blob([pre.textContent], { type: "application/json" });
         var a = document.createElement("a");
@@ -149,7 +149,7 @@
         URL.revokeObjectURL(a.href);
       });
       var cp = document.createElement("button");
-      cp.className = "btn ghost";
+      cp.className = "dl-link";
       cp.textContent = "Copiar";
       cp.addEventListener("click", function () {
         navigator.clipboard.writeText(pre.textContent).then(function () { toast("Payload copiado!"); });
@@ -177,7 +177,7 @@
         '<div class="field"><label>RBT12 (R$, p/ Simples)</label><input id="sim-rbt12" type="number" min="0" step="0.01" value=""/></div></div>' +
         '<div class="field-row"><div class="field"><label>Tipo de operação</label><select id="sim-kind"><option value="AUTO">Automático</option><option value="SALE_GOODS">Venda de mercadoria</option><option value="SERVICE_PROVISION">Prestação de serviço</option><option value="EXPORT">Exportação</option></select></div>' +
         '<div class="field"><label>Código de serviço (LC 116)</label><input id="sim-svc" type="text" placeholder="ex.: 1.05"/></div></div>' +
-        '<button class="btn primary" id="sim-run">Calcular tributos</button>' +
+        '<button class="sim-run" id="sim-run">Calcular tributos</button>' +
         '<div class="sim-key-note">Sem uma API key? A documentação de início rápido explica como criar sua conta e chave.</div>' +
       "</div>" +
       '<div class="sim-panel"><h3>Resultado</h3><div class="sim-result" id="sim-result"><div style="color:var(--muted);font-size:14px">Preencha a operação e clique em <b>Calcular tributos</b>.</div></div></div>' +
@@ -264,7 +264,8 @@
   }
 
   // ---------- boot ----------
-  document.getElementById("api-url").textContent = API;
+  var apiUrl = document.getElementById("api-url");
+  if (apiUrl) apiUrl.textContent = API;
   if (window.marked && marked.setOptions) marked.setOptions({ gfm: true });
   buildNav();
   bindSearch();

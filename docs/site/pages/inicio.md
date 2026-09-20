@@ -1,49 +1,47 @@
-<div class="hero">
-  <h1 style="margin:0">Motor de decisão tributária brasileiro</h1>
-  <p>Uma requisição retorna tributos, alíquotas, bases, CFOP/CST, fundamentos legais e o rastro completo da decisão — do MEI que emite NFS-e à multinacional que integra via API.</p>
-  <div class="tag-row">
-    <span class="tag">ICMS 27/27 UFs</span><span class="tag">DIFAL & FCP</span><span class="tag">ICMS-ST</span>
-    <span class="tag">PIS/COFINS</span><span class="tag">IPI + TIPI</span><span class="tag">ISS/NFS-e</span>
-    <span class="tag">Simples Anexo I & III</span><span class="tag">CBS/IBS 2026</span>
-  </div>
+<p class="byline">Documentação · <b>Tributax</b> · Motor de decisão tributária</p>
+
+# Quanto de imposto há nesta venda?
+
+<p class="statement">Uma requisição, e você sabe <mark>quais tributos incidem</mark>, quanto, sobre qual base, com qual fundamento legal e por quê.</p>
+
+<p class="lede">O Tributax recebe os dados de uma operação comercial: quem emite, quem recebe, o que é vendido, para onde. E devolve a carga tributária completa, com CFOP, CST/CSOSN, vigências e o rastro de cada decisão. Do MEI que emite uma NFS-e à multinacional que integra via API.</p>
+
+<div class="toc">
+  <a href="#/simulador"><span class="n">01</span><span class="t">Simulador</span><span class="d"> teste o motor no navegador, agora</span></a>
+  <a href="#/comeco-rapido"><span class="n">02</span><span class="t">Início rápido</span><span class="d"> primeira requisição em cinco minutos</span></a>
+  <a href="#/payloads"><span class="n">03</span><span class="t">Payloads por cenário</span><span class="d"> oito casos brasileiros, prontos para baixar</span></a>
+  <a href="#/tributos"><span class="n">04</span><span class="t">Tributos e cobertura</span><span class="d"> o que o motor calcula hoje</span></a>
+  <a href="#/para-llms"><span class="n">05</span><span class="t">Para agentes de IA</span><span class="d"> llms.txt, MCP e o contrato aberto</span></a>
 </div>
 
-## O que o Tributax faz
+## Um exemplo, do pedido ao centavo
 
-Você envia os dados de uma **operação comercial** — quem emite, quem recebe, o que é vendido, para onde — e recebe a **carga tributária completa**, com explicação para cada centavo:
-
-| Você pergunta | A resposta traz |
-|---|---|
-| Quais tributos incidem? | ICMS, DIFAL, FCP, PIS, COFINS, IPI, ISS, IRRF/CSLL, DAS, CBS/IBS… |
-| Quanto, sobre qual base? | Valor, base de cálculo e alíquota de cada tributo |
-| Com qual código? | CFOP inferido e CST/CSOSN por tributo |
-| Por quê? | Fundamento legal, regras aplicadas e descartadas, inferências |
-
-## Por que é diferente
-
-1. **Explicável** — toda decisão carrega trace auditável e `rulesetHash` (reprodutibilidade: a mesma resposta hoje e amanhã).
-2. **Honesto** — `NO_RULE_FOUND` nunca vira imposto zero; incerteza normativa é marcada como `NEEDS_REVIEW`, nunca suposição silenciosa.
-3. **Regras como dados** — vigências disjuntas garantidas por constraint no Postgres; sem `if` tributário espalhado por código.
-4. **IA que propõe, humano que aprova** — agente LLM+RAG monitora DOU/RSS e cria apenas rascunhos `AI_SUGGESTED`.
-5. **Feito para agentes** — documentação llms.txt, servidor MCP, SDK com retry e idempotência.
-
-<div class="cards">
-  <div class="card"><h3>⚡ <a href="#/simulador">Teste no simulador</a></h3><p>Calcule tributos de uma operação real direto no navegador.</p></div>
-  <div class="card"><h3>📦 <a href="#/payloads">Payloads prontos</a></h3><p>Um JSON por cenário, com download e cópia em um clique.</p></div>
-  <div class="card"><h3>🚀 <a href="#/comeco-rapido">Início rápido</a></h3><p>Primeira requisição em menos de 5 minutos.</p></div>
-  <div class="card"><h3>🤖 <a href="#/para-llms">Para LLMs</a></h3><p>Documentação no padrão llms.txt + servidor MCP.</p></div>
-</div>
-
-## Exemplo real
-
-Venda interestadual de um notebook de R$ 3.500 (RJ → SP, consumidor final):
+Venda interestadual de um notebook de R$ 3.500, destinatário consumidor final em São Paulo. Eis a resposta que a API devolve, já com os códigos que o documento fiscal pede:
 
 | Tributo | Alíquota | Valor | Código | Fundamento |
 |---|---|---|---|---|
 | ICMS | 12% | R$ 420,00 | CST 00 | Res. Senado 22/1989 |
-| DIFAL | 6% | R$ 210,00 | — | LC 190/2022 |
-| FCP | 2% | R$ 70,00 | — | LC 87/96, art. 82-A |
-| PIS / COFINS | 1,65% / 7,6% | R$ 57,75 / R$ 266,00 | CST 01 | Leis 10.637/02 e 10.833/03 |
-| CBS / IBS | 0,90% / 0,10% | R$ 31,50 / R$ 3,50 | — | LC 214/2025 (teste 2026) |
+| DIFAL | 6% | R$ 210,00 |  | LC 190/2022 |
+| FCP | 2% | R$ 70,00 |  | LC 87/96, art. 82-A |
+| PIS e COFINS | 1,65% e 7,6% | R$ 323,75 | CST 01 | Leis 10.637/02 e 10.833/03 |
+| CBS e IBS | 0,90% e 0,10% | R$ 35,00 |  | LC 214/2025, teste 2026 |
 
-…mais CFOP **6102** inferido, documento **NFC-e** e inferências explicando cada campo ausente. [Entenda cada campo da resposta →](#/resposta)
+Além da tabela: CFOP 6102 inferido, documento NFC-e, e uma lista de inferências explicando cada campo que o payload não trouxe. Reproduzível: a resposta carrega o `rulesetHash` do snapshot de regras usado.
+
+## O que sustenta o resultado
+
+ **Explicabilidade.** Toda decisão traz fundamento legal, regras aplicadas e descartadas, e o porquê de cada inferência. Com `detailLevel: FULL_TRACE`, o rastro completo de resolução.
+
+ **Honestidade fiscal.** Quando não há regra, a resposta diz `NO_RULE_FOUND` e nunca assume imposto zero. Onde fontes públicas divergem, a regra nasce marcada `NEEDS_REVIEW`, com as fontes citadas. Incerteza marcada é melhor que número bonito e errado.
+
+ **Regras como dados.** O catálogo vive no Postgres, com vigências disjuntas garantidas por constraint. Nenhum `if` tributário espalhado por código; uma correção de regra é uma nova versão com vigência futura, e o histórico jamais é reescrito.
+
+ **IA que propõe, humano que aprova.** Um agente com RAG monitora DOU e RSS oficiais, extrai observações com fonte primária e cria apenas rascunhos `AI_SUGGESTED`. A aprovação é sempre humana, e isso é invariante de código, não de política.
+
+## Cobertura atual
+
+ICMS nas 27 UFs com alíquota interna e fontes públicas de 2026; interestadual, DIFAL e FCP; substituição tributária com MVA por UF; PIS/COFINS nos dois regimes; IPI sobre a TIPI oficial; ISS pela LC 116/03 com município do prestador; DAS do Simples nos Anexos I e III; retenções federais em serviços; e as alíquotas-teste de CBS/IBS da LC 214/2025, com vigência explícita. Os detalhes, incluindo o que ainda está marcado para revisão, estão na página [Tributos e cobertura](#/tributos).
+
+## Para quem é
+
+Para o ERP que precisa calcular tributos na emissão; para o marketplace que antecipa o custo fiscal do carrinho; para o contador que quer fundamentar cada centavo; e para o agente de IA, que encontra aqui documentação de máquina (llms.txt), servidor MCP e um contrato OpenAPI estável. [Comece pelo simulador](#/simulador) ou siga para o [início rápido](#/comeco-rapido).

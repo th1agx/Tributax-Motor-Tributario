@@ -4,11 +4,11 @@ O Tributax foi construído para ser consumido por **humanos e por IAs**. Três c
 
 ## 1. Documentação llms.txt (padrão llmstxt.org)
 
-A própria API serve documentação no formato que agentes entendem — aponte seu LLM/agent para:
+A própria API serve documentação no formato que agentes entendem, aponte seu LLM/agent para:
 
 | URL | Conteúdo |
 |---|---|
-| `/llms.txt` | Índice orientado: quickstart, guias, ADRs — com descrição de cada página |
+| `/llms.txt` | Índice orientado: quickstart, guias, ADRs, com descrição de cada página |
 | `/llms-full.txt` | Todo o conteúdo concatenado (~51 KB) para contexto único |
 | `/docs/index.md` | Visão geral em Markdown puro (convenção append `/index.md`) |
 | `/openapi.yaml` | Contrato OpenAPI 3.1 |
@@ -17,7 +17,7 @@ Qualquer página `.md` responde em Markdown puro; `Accept: text/markdown` també
 
 ## 2. Servidor MCP
 
-`@tributax/mcp` expõe o motor como ferramenta MCP (stdio) para Claude, Cursor e orquestradores — **proxy puro da REST** ([ADR-014](/docs/adr/ADR-014-servidor-mcp.md)): nenhuma regra duplicada no cliente.
+`@tributax/mcp` expõe o motor como ferramenta MCP (stdio) para Claude, Cursor e orquestradores, **proxy puro da REST** ([ADR-014](/docs/adr/ADR-014-servidor-mcp.md)): nenhuma regra duplicada no cliente.
 
 ```jsonc
 // config do seu agente (.mcp.json, claude_desktop_config.json…)

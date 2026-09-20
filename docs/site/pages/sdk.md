@@ -37,11 +37,11 @@ const quote = await tx.simulate({ correlationId: "cart-preview", items: [/* … 
 
 | Recurso | Comportamento |
 |---|---|
-| **Retry** | `429`/`5xx` com backoff exponencial + jitter (padrão 3 tentativas) |
-| **Erros tipados** | `TributaxApiError` com `code` (`PAYLOAD_VALIDATION`, `RATE_LIMITED`, …) e `statusCode` |
-| **Idempotência** | Opção `idempotencyKey` gera e reusa o header; replay é transparente |
-| **Timeout** | Configurável (`timeoutMs`), falha rápida com AbortController |
-| **Tipos** | Request/response 1:1 com o OpenAPI — autocomplete total |
+|**Retry**| `429`/`5xx` com backoff exponencial + jitter (padrão 3 tentativas) |
+|**Erros tipados**| `TributaxApiError` com `code` (`PAYLOAD_VALIDATION`, `RATE_LIMITED`, …) e `statusCode` |
+|**Idempotência**| Opção `idempotencyKey` gera e reusa o header; replay é transparente |
+|**Timeout**| Configurável (`timeoutMs`), falha rápida com AbortController |
+|**Tipos**| Request/response 1:1 com o OpenAPI, autocomplete total |
 
 ## Tratamento de erro idiomático
 

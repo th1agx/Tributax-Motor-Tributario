@@ -16,7 +16,7 @@ Calcula a tributação e **persiste** a decisão (trace auditável + `rulesetHas
 
 ### `POST /v1/tax-simulations`
 
-Mesmo cálculo, **sem persistir** — ideal para orçamento, preview de carrinho e testes.
+Mesmo cálculo, **sem persistir**, ideal para orçamento, preview de carrinho e testes.
 
 ### `GET /v1/tax-decisions/{id}`
 
@@ -26,7 +26,7 @@ Recupera uma decisão persistida pelo `decisionId` (UUID).
 
 ### `POST /v1/parties` · `GET /v1/parties/{ref}`
 
-Cadastra e consulta partes (emitente/tomador) por id ou CNPJ/CPF. O cadastro carrega **regimes fiscais como intervalos temporais disjuntos** — a decisão usa o vigente na data da operação, permitindo cálculo retroativo correto após mudança de regime.
+Cadastra e consulta partes (emitente/tomador) por id ou CNPJ/CPF. O cadastro carrega **regimes fiscais como intervalos temporais disjuntos**, a decisão usa o vigente na data da operação, permitindo cálculo retroativo correto após mudança de regime.
 
 ```json
 {
@@ -48,11 +48,11 @@ Lista o catálogo completo (todos os status) com vigência e fundamento legal de
 
 ### `POST /v1/rules`
 
-Propõe uma regra — nasce `DRAFT`. Agentes de IA propõem com `origin: "AI_SUGGESTED"`; **a aprovação é sempre humana** ([ADR-012](/docs/adr/ADR-012-monitoracao-legislativa-por-ia.md)).
+Propõe uma regra, nasce `DRAFT`. Agentes de IA propõem com `origin: "AI_SUGGESTED"`; **a aprovação é sempre humana** ([ADR-012](/docs/adr/ADR-012-monitoracao-legislativa-por-ia.md)).
 
 ### `POST /v1/rules/{id}/transitions`
 
-Transiciona status: `DRAFT → REVIEW → APPROVED → ACTIVE` (ou `DEPRECATED`/`REVOKED`). A transição de aprovação recusa `actor: "AI_AGENT"` — invariante do sistema.
+Transiciona status: `DRAFT REVIEW APPROVED ACTIVE` (ou `DEPRECATED`/`REVOKED`). A transição de aprovação recusa `actor: "AI_AGENT"`, invariante do sistema.
 
 ### `GET /v1/rules/review-queue`
 

@@ -1,15 +1,15 @@
 # Payloads por cenário
 
-Os modelos de requisição para os principais cenários brasileiros. Cada card tem **download do .json** e **cópia** em um clique — ajuste os valores e envie para `POST /v1/tax-decisions` ou `/v1/tax-simulations`.
+Os modelos de requisição para os principais cenários brasileiros. Cada modelo pode ser **baixado como .json** ou **copiado** em um clique; ajuste os valores e envie para `POST /v1/tax-decisions` ou `/v1/tax-simulations`.
 
-> Lembre: valores em **centavos** (`350000` = R$ 3.500,00). O emitente pode ser enviado inline (`context.issuer`) ou referenciar um cadastro em `/v1/parties` via `partyRef` (CNPJ) — o cadastro enriquece o cálculo com regime fiscal e UF de origem.
+> Lembre: valores em **centavos** (`350000` = R$ 3.500,00). O emitente pode ser enviado inline (`context.issuer`) ou referenciar um cadastro em `/v1/parties` via `partyRef` (CNPJ), o cadastro enriquece o cálculo com regime fiscal e UF de origem.
 
 ---
 
 ## Varejo: venda interestadual a consumidor final
 
 <div class="payload-card" data-file="venda-interestadual-nfe.json">
-<div class="payload-head"><h3> venda-interestadual-nfe.json</h3><div class="meta">NFC-e/NF-e · DIFAL + FCP · CFOP 6102</div></div>
+<div class="payload-head"><h3>venda-interestadual-nfe.json</h3><div class="meta">NFC-e/NF-e · DIFAL + FCP · CFOP 6102</div></div>
 <pre><code>{
   "correlationId": "venda-2026-001",
   "context": {
@@ -172,4 +172,4 @@ Os modelos de requisição para os principais cenários brasileiros. Cada card t
 
 ## Quer um cenário que não está aqui?
 
-A [referência de payload](/docs/contracts/payload-spec.md) traz o contrato completo com os 4 tiers (`MINIMAL → COMPLETE`). Todos os modelos acima aceitam `asOfDate` (cálculo retroativo), `x-idempotency-key` (reenvio seguro) e `options.detailLevel: "FULL_TRACE"` (trace completo na resposta).
+A [referência de payload](/docs/contracts/payload-spec.md) traz o contrato completo com os 4 tiers (`MINIMAL COMPLETE`). Todos os modelos acima aceitam `asOfDate` (cálculo retroativo), `x-idempotency-key` (reenvio seguro) e `options.detailLevel: "FULL_TRACE"` (trace completo na resposta).

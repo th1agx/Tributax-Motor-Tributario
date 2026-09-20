@@ -244,7 +244,8 @@ describe("API e2e — /v1/tax-decisions", () => {
     const site = await request(app.getHttpServer()).get("/docs").expect(200);
     expect(site.text).toMatch(/Tributax — Documentação/);
     const css = await request(app.getHttpServer()).get("/docs/site/style.css").expect(200);
-    expect(css.text).toContain("--yellow: #ffd60a");
+    expect(css.text).toContain("--mark: #ffe066");
+    expect(css.text).toContain("Fraunces");
     const ui = await request(app.getHttpServer()).get("/docs/api").expect(200);
     expect(ui.text).toMatch(/swagger-ui/i);
   });

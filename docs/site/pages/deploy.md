@@ -6,9 +6,9 @@ Guia completo em [`docs/deploy.md`](/docs/deploy.md). Resumo operacional:
 
 | Camada | Serviço | Observação |
 |---|---|---|
-| API | [Render](https://render.com) | `render.yaml` no repo — botão de deploy de 1 clique; free tier |
+| API | [Render](https://render.com) | `render.yaml` no repo, botão de deploy de 1 clique; free tier |
 | Banco | [Neon](https://neon.tech) | Postgres 16 + pgvector, free sem pausa |
-| Watch legislativo | GitHub Actions | `.github/workflows/legislation-watch.yml` — semanal, matriz de alvos |
+| Watch legislativo | GitHub Actions | `.github/workflows/legislation-watch.yml`, semanal, matriz de alvos |
 
 [![Deploy to Render](https://render.com/images/deploy-button.svg)](https://render.com/deploy?repo=https://github.com/th1agx/Tributax-Motor-Tributario)
 
@@ -16,7 +16,7 @@ Guia completo em [`docs/deploy.md`](/docs/deploy.md). Resumo operacional:
 
 | Variável | Papel |
 |---|---|
-| `DATABASE_URL` | Postgres (Neon) — sem ela, a API sobe com stores in-memory (dev) |
+| `DATABASE_URL` | Postgres (Neon), sem ela, a API sobe com stores in-memory (dev) |
 | `TRIBUTAX_ADMIN_KEY` | Administração (tenants, webhooks). **Sem ela, rotas admin ficam desabilitadas** (fail-closed) |
 | `TRIBUTAX_API_KEYS` | Keys estáticas de dev (produção usa a tabela `tenants`) |
 | `TRIBUTAX_WEBHOOK_SECRET` | Segredo HMAC dos deliveries |
@@ -30,7 +30,7 @@ DATABASE_URL=… node scripts/migrate-custom.mjs          # 01 vigências disjun
 # sem psql na máquina? o migrate-custom usa node+pg
 ```
 
-Depois, o primeiro tenant (via `POST /v1/tenants` com o admin key) — nunca comite keys.
+Depois, o primeiro tenant (via `POST /v1/tenants` com o admin key), nunca comite keys.
 
 ## VPS com Docker
 
@@ -38,4 +38,4 @@ Depois, o primeiro tenant (via `POST /v1/tenants` com o admin key) — nunca com
 
 ## Saúde
 
-`GET /openapi.yaml` e `GET /llms.txt` são públicos — use-os como health check. Decisões são append-only ([ADR-007](/docs/adr/ADR-007-trace-append-only.md)): nunca atualizamos uma decisão histórica; uma correção de regra gera nova versão da regra com vigência futura.
+`GET /openapi.yaml` e `GET /llms.txt` são públicos, use-os como health check. Decisões são append-only ([ADR-007](/docs/adr/ADR-007-trace-append-only.md)): nunca atualizamos uma decisão histórica; uma correção de regra gera nova versão da regra com vigência futura.

@@ -45,13 +45,13 @@ Ou teste sem escrever nada: [abrir o simulador →](#/simulador)
 
 - **Valores monetários** são inteiros em **centavos** (`350000` = R$ 3.500,00). Sem arredondamento flutuante, jamais.
 - **Percentuais** são inteiros em **basis points** (`1200` = 12%).
-- **Payload mínimo**: só `correlationId` + `items`. O motor infere o resto (tipo de operação, papel do destinatário…) e registra **cada inferência na resposta**.
+- **Payload mínimo**: só `correlationId` + `items`. O motor infere o resto (tipo de operação, papel do destinatário…) e registra **cada inferência** na resposta.
 - **`decisions` vs `simulations`**: mesmo cálculo; `POST /v1/tax-decisions` persiste a decisão (com trace e `rulesetHash`), `POST /v1/tax-simulations` é stateless.
-- **Quanto mais contexto, mais preciso**: enviar NCM, UF, regime do emitente, RBT12 etc. eleva o tier do payload (`MINIMAL → INTERMEDIATE → ADVANCED → COMPLETE`).
+- **Quanto mais contexto, mais preciso**: enviar NCM, UF, regime do emitente, RBT12 etc. eleva o tier do payload (`MINIMAL INTERMEDIATE ADVANCED COMPLETE`).
 
 ## 4. Próximos passos
 
-- [Payloads prontos por cenário](#/payloads) — copie ou baixe o JSON do seu caso
+- [Payloads prontos por cenário](#/payloads), copie ou baixe o JSON do seu caso
 - [Referência de endpoints](#/api)
-- [SDK TypeScript](#/sdk) — retry, erros tipados, idempotência
-- [Webhooks & idempotência](#/webhooks) — integração robusta de produção
+- [SDK TypeScript](#/sdk), retry, erros tipados, idempotência
+- [Webhooks & idempotência](#/webhooks), integração robusta de produção

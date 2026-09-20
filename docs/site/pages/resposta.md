@@ -25,9 +25,9 @@ Toda decisão traz o resultado **e a explicação**. Campos-chave:
 
 | Campo | Significado |
 |---|---|
-| `rulesetHash` | Hash do snapshot de regras usado — **reprodutibilidade**: mesma hash, mesmo resultado, hoje ou em auditoria futura. |
+| `rulesetHash` | Hash do snapshot de regras usado, **reprodutibilidade**: mesma hash, mesmo resultado, hoje ou em auditoria futura. |
 | `asOfDate` | Data de referência do cálculo (envie `asOfDate` no request para retroativo). |
-| `derivedTier` | Qualidade do payload recebido: `MINIMAL → INTERMEDIATE → ADVANCED → COMPLETE`. Quanto maior, menos inferência e mais precisão. |
+| `derivedTier` | Qualidade do payload recebido: `MINIMAL INTERMEDIATE ADVANCED COMPLETE`. Quanto maior, menos inferência e mais precisão. |
 | `cfop` | Código fiscal inferido da operação, com a justificativa (`basis`) e `review` quando há ambiguidade normativa. |
 
 ## Cada TaxItem
@@ -35,13 +35,13 @@ Toda decisão traz o resultado **e a explicação**. Campos-chave:
 | Campo | Significado |
 |---|---|
 | `tax` / `outcome` | Tributo e resultado: `TAXED`, `EXEMPT`, `IMMUNE`, `NON_TAXABLE`, `ZERO_RATED`, `SUSPENDED`, `DEFERRED`, `RETAINED`, `NO_RULE_FOUND`. |
-| `basisCents` / `rateBp` / `amountCents` | Base de cálculo, alíquota (basis points) e valor — em centavos. |
+| `basisCents` / `rateBp` / `amountCents` | Base de cálculo, alíquota (basis points) e valor, em centavos. |
 | `fiscalCode` | CST/CSOSN do tributo nesta operação (ex.: ICMS `CST 00`, Simples `CSOSN 102`, ST `CST 10`). |
 | `legalBases` | Fundamentos legais citados (ex.: `"LC 190/2022, art. 3º"`). |
 | `appliedRules` | Regras do catálogo que produziram o efeito, com versão (`DIFAL-SP-GENERAL@v1`). |
 | `hints` | Quando `NO_RULE_FOUND`: diagnóstico do que faltou para a regra casar. |
 
-> **`NO_RULE_FOUND` nunca é imposto zero.** Se o motor não tem regra, ele diz isso — e os hints apontam o caminho. Suposição silenciosa não existe no Tributax.
+>**`NO_RULE_FOUND` nunca é imposto zero.** Se o motor não tem regra, ele diz isso, e os hints apontam o caminho. Suposição silenciosa não existe no Tributax.
 
 ## Inferências
 
@@ -49,11 +49,11 @@ Cada campo que você não enviou e o motor deduziu aparece em `inferences` com a
 
 ```json
 { "field": "context.recipient.role", "value": "FINAL_CONSUMER",
-  "evidence": "destinatário sem identificação → consumidor final" }
+  "evidence": "destinatário sem identificação consumidor final" }
 ```
 
 Nada é decidido às escondidas: ou você informou, ou o motor inferiu **e documentou**.
 
 ## Trace completo
 
-Com `options.detailLevel: "FULL_TRACE"`, a resposta inclui o rastro de resolução: regras candidatas, por que cada uma aplicou ou foi descartada (especificidade vence conflitos, [ADR-005](/docs/adr/ADR-005-resolucao-de-conflitos.md)) — material de auditoria por excelência.
+Com `options.detailLevel: "FULL_TRACE"`, a resposta inclui o rastro de resolução: regras candidatas, por que cada uma aplicou ou foi descartada (especificidade vence conflitos, [ADR-005](/docs/adr/ADR-005-resolucao-de-conflitos.md)), material de auditoria por excelência.

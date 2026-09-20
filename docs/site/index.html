@@ -5,29 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Tributax — Documentação</title>
   <link rel="icon" type="image/svg+xml" href="/docs/site/favicon.svg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,340..640;1,9..144,340..640&family=Newsreader:ital,opsz,wght@0,6..72,380..620;1,6..72,380..620&family=Inter:wght@400..600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/docs/site/style.css"/>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="#/inicio">
-      <img src="/docs/site/logo.svg" alt="Tributax" width="34" height="34"/>
-      <span>Tributax <small>docs</small></span>
+      <img src="/docs/site/logo.svg" alt="Tributax" width="30" height="30"/>
+      <span>Tributax</span>
     </a>
-    <div class="topbar-right">
-      <code class="api-url" id="api-url"></code>
-      <a class="btn ghost" href="/docs/api" target="_blank" rel="noopener">Swagger UI</a>
-      <a class="btn primary" href="#/simulador">Simulador</a>
-    </div>
+    <nav class="topbar-nav">
+      <a href="#/simulador">Simulador</a>
+      <a href="#/payloads">Payloads</a>
+      <a href="/docs/api" target="_blank" rel="noopener">OpenAPI</a>
+      <a href="/llms.txt" target="_blank" rel="noopener">llms.txt</a>
+    </nav>
   </header>
 
   <div class="layout">
     <nav class="sidebar" id="sidebar">
-      <div class="search"><input id="search" type="search" placeholder="Buscar na documentação…"/></div>
+      <div class="search"><input id="search" type="search" placeholder="Buscar…"/></div>
       <div id="nav"></div>
-      <div class="sidebar-foot">
-        <a href="/llms.txt" target="_blank" rel="noopener">📄 llms.txt</a>
-        <a href="/llms-full.txt" target="_blank" rel="noopener">📄 llms-full.txt</a>
-      </div>
     </nav>
 
     <main class="content" id="content">
