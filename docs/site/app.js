@@ -97,8 +97,35 @@
   }
 
   // ---------- melhorias pós-render ----------
+  function buildRail() {
+    var rail = document.getElementById("rail-nav");
+    if (!rail) return;
+    var h2s = Array.prototype.slice.call(document.querySelectorAll("#content h2"));
+    if (!h2s.length) { document.getElementById("rail").style.display = "none"; return; }
+    document.getElementById("rail").style.display = "";
+    rail.innerHTML = h2s.map(function (h, i) {
+      if (!h.id) h.id = "sec-" + i + "-" + h.textContent.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
+      return '<a href="#' + h.id + '" data-target="' + h.id + '">' + h.textContent + "</a>";
+    }).join("");
+    var links = Array.prototype.slice.call(rail.querySelectorAll("a"));
+    var onScroll = function () {
+      var current = h2s[0];
+      for (var i = 0; i < h2s.length; i++) {
+        if (h2s[i].getBoundingClientRect().top < 120) current = h2s[i];
+      }
+      links.forEach(function (a) {
+        a.classList.toggle("active", a.getAttribute("data-target") === (current && current.id));
+      });
+    };
+    window.removeEventListener("scroll", window.__railScroll || function () {});
+    window.__railScroll = onScroll;
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  }
+
   function enhancePage(page) {
     enhancePayloads();
+    buildRail();
     if (page === "simulador") mountSimulator();
     // links relativos .md da doc oficial → servidos pela própria API
     contentFixLinks();
@@ -180,7 +207,7 @@
         '<button class="sim-run" id="sim-run">Calcular tributos</button>' +
         '<div class="sim-key-note">Sem uma API key? A documentação de início rápido explica como criar sua conta e chave.</div>' +
       "</div>" +
-      '<div class="sim-panel"><h3>Resultado</h3><div class="sim-result" id="sim-result"><div style="color:var(--muted);font-size:14px">Preencha a operação e clique em <b>Calcular tributos</b>.</div></div></div>' +
+      '<div class="sim-panel"><h3>Resultado</h3><div class="sim-result" id="sim-result"><div style="color:var(--ink-mute);font-size:14px">Preencha a operação e clique em <b>Calcular tributos</b>.</div></div></div>' +
       "</div>";
 
     var keyInput = document.getElementById("sim-key");

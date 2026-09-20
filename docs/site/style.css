@@ -42,9 +42,13 @@ body {
 .topbar-nav a:hover { color: var(--ink); border-image: linear-gradient(var(--mark), var(--mark)); border-bottom: 2px solid var(--mark); }
 
 /* ---------- layout ---------- */
-.layout { display: grid; grid-template-columns: 250px 1fr; }
+.layout { display: grid; grid-template-columns: 250px minmax(0, 1fr) 210px; gap: 0; }
 .sidebar { border-right: 1px solid var(--line); padding: 26px 18px 60px; }
-.content { max-width: 760px; padding: 56px 64px 140px; }
+.content { max-width: 720px; padding: 56px 56px 140px; margin: 0 auto; width: 100%; }
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 250px minmax(0, 1fr); }
+  .rail { display: none; }
+}
 @media (max-width: 960px) {
   .layout { grid-template-columns: 1fr; }
   .sidebar { border-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 20px; }
@@ -118,10 +122,14 @@ body {
   font-size: clamp(21px, 2.6vw, 27px); line-height: 1.4; color: var(--ink);
   margin: 8px 0 20px;
 }
-.statement em, .content em mark, mark {
+.statement em, .content em mark, mark, .content mark {
   font-style: inherit; background: linear-gradient(transparent 58%, var(--mark) 58%);
-  padding: 0 2px;
+  padding: 0 2px; color: #0d0d10;
 }
+mark strong, mark b { color: #0d0d10; }
+.field input::placeholder, .field select { color: var(--ink); }
+.field input::placeholder { color: var(--ink-mute); }
+.field select option { background: var(--paper-2); color: var(--ink); }
 .lede { font-size: 19px; color: var(--ink-soft); }
 .byline {
   font-family: var(--sans); font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
@@ -204,3 +212,10 @@ details.raw summary {
   pointer-events: none; z-index: 50;
 }
 .toast.show { opacity: 1; }
+
+/* ---------- rail "nesta página" ---------- */
+.rail { padding: 56px 28px 80px 8px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.rail-title { font-family: var(--sans); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-mute); margin-bottom: 14px; }
+.rail a { display: block; font-size: 14px; font-family: var(--serif-body); color: var(--ink-mute); text-decoration: none; padding: 4px 0 4px 14px; border-left: 1px solid var(--line); }
+.rail a:hover { color: var(--ink); }
+.rail a.active { color: var(--ink); font-style: italic; border-left: 2px solid var(--mark); padding-left: 13px; }
