@@ -19,7 +19,7 @@
 html, body { margin: 0; padding: 0; }
 body {
   background: var(--paper); color: var(--ink);
-  font-family: var(--serif-body); font-size: 17.5px; line-height: 1.72;
+  font-family: var(--serif-body); font-size: 18.5px; line-height: 1.72;
   font-optical-sizing: auto;
 }
 
@@ -42,11 +42,16 @@ body {
 .topbar-nav a:hover { color: var(--ink); border-image: linear-gradient(var(--mark), var(--mark)); border-bottom: 2px solid var(--mark); }
 
 /* ---------- layout ---------- */
-.layout { display: grid; grid-template-columns: 250px minmax(0, 1fr) 210px; gap: 0; }
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 900px) 210px;
+  justify-content: center;
+  gap: 0 clamp(24px, 4vw, 72px);
+}
 .sidebar { border-right: 1px solid var(--line); padding: 26px 18px 60px; }
-.content { max-width: 720px; padding: 56px 56px 140px; margin: 0 auto; width: 100%; }
-@media (max-width: 1280px) {
-  .layout { grid-template-columns: 250px minmax(0, 1fr); }
+.content { max-width: none; padding: 56px 0 140px; width: 100%; }
+@media (max-width: 1360px) {
+  .layout { grid-template-columns: 250px minmax(0, 900px); gap: 0 32px; }
   .rail { display: none; }
 }
 @media (max-width: 960px) {
