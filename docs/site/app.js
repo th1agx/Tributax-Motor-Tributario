@@ -320,7 +320,6 @@
       b.addEventListener("click", function () {
         langMenu.querySelectorAll("button").forEach(function (x) { x.classList.remove("on"); });
         b.classList.add("on");
-        langBtn.textContent = "🌐 " + (b.getAttribute("data-lang") === "en" ? "EN" : "PT");
         langMenu.classList.remove("open");
       });
     });
