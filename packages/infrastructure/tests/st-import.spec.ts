@@ -34,18 +34,23 @@ describe("parseStCsv", () => {
 describe("buildStRules + cálculo ST importado", () => {
   const rules = buildStRules(parseStCsv(CSV));
 
-  it("dedupe por UF+NCM (SP 30049099 fica com a primeira MVA)", () => {
-    expect(rules).toHaveLength(2);
-    const sp = rules.find((r) => r.id.includes("SP"))!;
-    expect(sp.effects[0]).toEqual({ type: "applySt", mvaBp: 3754, rateBp: 1800 }); // MVA da 1ª linha
+  it("dedupe por UF+NCM (SP 30049099 fica com a primeira MVA; 3 variantes por linha)", () => {
+    // 2 linhas válidas × 3 variantes (interna, inter12, inter7) = 6 regras
+    expect(rules).toHaveLength(6);
+    const spInt = rules.find((r) => r.id.includes("SP") && r.id.endsWith("-INT"))!;
+    expect(spInt.effects[0]).toEqual({ type: "applySt", mvaBp: 3754, rateBp: 1800 }); // MVA da 1ª linha
+    // interestadual 12%: MVA ajustada (Conv. 92/15 art. 2º VIII)
+    const spInter = rules.find((r) => r.id.includes("SP") && r.id.endsWith("-INTER12"))!;
+    expect((spInter.effects[0] as { mvaBp: number }).mvaBp).toBeGreaterThan(3754);
   });
 
-  it("regra importada calcula ST real (SP: base 1375,40, bruto 247,57)", () => {
+  it("regra importada calcula ST real — MG→SP interestadual usa MVA AJUSTADA (base 1476,00, bruto 265,68)", () => {
     const { icmsSt } = calculateIcmsStWith(ctx("30049099", "SP"), rules);
     expect(icmsSt.outcome.kind).toBe("TAXED");
     if (icmsSt.outcome.kind === "TAXED") {
-      expect(icmsSt.outcome.basisCents).toBe(137540);
-      expect(icmsSt.outcome.amountCents).toBe(24757);
+      // MVA 37,54% ajustada (inter 12%, interna SP 18%) = 47,60%
+      expect(icmsSt.outcome.basisCents).toBe(147600);
+      expect(icmsSt.outcome.amountCents).toBe(26568);
     }
   });
 

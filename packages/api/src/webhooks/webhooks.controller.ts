@@ -41,6 +41,20 @@ export class InMemoryWebhookRegistry implements WebhookRegistry {
     if (!/^https?:\/\//.test(url)) {
       throw new BadRequestException({ error: "PAYLOAD_VALIDATION", message: "url deve ser http(s)" });
     }
+    // anti-SSRF (auditoria §4): host não pode resolver para rede reservada
+    // (loopback, link-local, RFC1918, IP de metadados de nuvem 169.254/16).
+    try {
+      const host = new URL(url).hostname;
+      if (isReservedHost(host)) {
+        throw new BadRequestException({
+          error: "SSRF_BLOCKED",
+          message: `host não permitido para webhook: ${host} (redes internas/reservadas bloqueadas)`,
+        });
+      }
+    } catch (e) {
+      if (e instanceof BadRequestException) throw e;
+      throw new BadRequestException({ error: "PAYLOAD_VALIDATION", message: "url inválida" });
+    }
     if (!events?.length) {
       throw new BadRequestException({ error: "PAYLOAD_VALIDATION", message: "informe ao menos 1 evento" });
     }
@@ -113,3 +127,23 @@ export class WebhooksController {
 
 @Module({ controllers: [WebhooksController] })
 export class WebhooksModule {}
+
+/** Hosts reservados/não-roteáveis — bloqueio SSRF. */
+function isReservedHost(host: string): boolean {
+  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal")) return true;
+  // IPv4 literal
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+  if (m) {
+    const [a, b] = [Number(m[1]), Number(m[2])];
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true; // link-local / metadados de nuvem
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a >= 224) return true; // multicast/reservado
+    return false;
+  }
+  // IPv6 literal básico
+  if (h.includes(":")) return true; // bloqueia IPv6 direto (DNS com AAAA segue via hostname)
+  return false;
+}

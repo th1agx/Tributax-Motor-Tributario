@@ -1,5 +1,5 @@
 import type { TaxRule, Uf } from "@tributax/domain";
-import { icmsStRule } from "@tributax/domain";
+import { icmsStRules } from "@tributax/domain";
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { taxRules } from "./schema.js";
@@ -51,7 +51,9 @@ export function buildStRules(rows: readonly StRow[], validFrom?: string): readon
     const key = `${uf}|${ncm}`;
     if (seen.has(key)) continue; // primeira ocorrência vence
     seen.add(key);
-    rules.push(icmsStRule(uf as Uf, ncm, Math.round(mva * 100), validFrom));
+    // 3 variantes por linha: interna (MVA original), inter 12% e inter 7%
+    // favorecida (MVA ajustada, Conv. 92/15 art. 2º VIII — auditoria 2.4)
+    rules.push(...icmsStRules(uf as Uf, ncm, Math.round(mva * 100), validFrom));
   }
   return rules;
 }

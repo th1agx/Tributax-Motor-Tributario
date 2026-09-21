@@ -1,4 +1,4 @@
-import { BadGatewayException, BadRequestException, Body, Controller, Get, Headers, Inject, Module, Optional, Param, Post, Res } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Headers, Inject, InternalServerErrorException, Module, Optional, Param, Post, Res } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { randomUUID } from "node:crypto";
 import { ENGINE_VERSION, inferCfop, fiscalCodeFor, netStCents } from "@tributax/domain";
@@ -268,8 +268,13 @@ function toHttp(e: unknown): unknown {
   if (e instanceof PayloadValidationError) {
     return new BadRequestException({ error: "PAYLOAD_VALIDATION", message: e.message });
   }
-  const message = (e as Error)?.message || String(e);
-  return new BadGatewayException({ error: "INTERNAL", message });
+  // erro interno: 500 (não 502 — não é falha de upstream; cliente não retenta),
+  // mensagem genérica na resposta; detalhe só no log do servidor.
+  console.error("[tax-decision] erro interno:", e);
+  return new InternalServerErrorException({
+    error: "INTERNAL",
+    message: "erro interno ao processar a decisão — correlationId no cabeçalho de resposta",
+  });
 }
 
 export interface TaxItem {

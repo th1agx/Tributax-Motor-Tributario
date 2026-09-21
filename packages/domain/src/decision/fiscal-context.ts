@@ -36,6 +36,10 @@ export interface FiscalContextItem {
   readonly discountCents?: number;
   /** Dedução legal da BASE do ISS (materiais fornecidos pelo prestador, LC 116/03) — centavos. */
   readonly issDeductionCents?: number;
+  /** Despesas acessórias por item (integram a base do ICMS/ST, LC 87/96 art. 13 §1º I). */
+  readonly freightCents?: number;
+  readonly insuranceCents?: number;
+  readonly otherChargesCents?: number;
 }
 
 export interface FiscalContext {

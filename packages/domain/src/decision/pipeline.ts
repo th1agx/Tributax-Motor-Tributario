@@ -206,8 +206,13 @@ function compute(rule: TaxRule, ctx: FiscalContext, rounding: RoundingPolicy): T
   }
   const applySt = rule.effects.find((e) => e.type === "applySt");
   if (applySt && applySt.type === "applySt") {
-    // base ST = valor da operação × (1 + MVA) — Conv. 92/15, art. 2º, IV
-    const stBase = Money.fromCents(Math.round((basis.cents * (10000 + applySt.mvaBp)) / 10000));
+    // base ST = (valor da operação + despesas acessórias do item) × (1 + MVA)
+    // — Conv. 92/15, art. 2º, IV; LC 87/96 art. 13 §1º, I (frete/seguro/
+    // acessórias integram a base). IPI, quando devido na operação, ainda
+    // não compõe (modelagem futura — NEEDS_REVIEW do módulo ST).
+    const item = ctx.items[0];
+    const charges = (item?.freightCents ?? 0) + (item?.insuranceCents ?? 0) + (item?.otherChargesCents ?? 0);
+    const stBase = Money.fromCents(Math.round(((basis.cents + charges) * (10000 + applySt.mvaBp)) / 10000));
     const rate = TaxRate.fromBasisPoints(applySt.rateBp);
     return {
       kind: "TAXED",
@@ -276,8 +281,11 @@ function applyBasisEffects(rule: TaxRule, basis: Money): Money {
 
 /** Hash determinístico do snapshot de regras (reprodutibilidade, ADR-007). */
 function rulesetHash(rules: readonly TaxRule[]): string {
+  // status entra no canonical (auditoria 2.10): ACTIVE→DRAFT muda o resultado
+  // e o hash precisa refletir; priority/version como números canônicos
+  // (o schema Postgres os guarda como text — "1" e 1 têm o mesmo hash aqui).
   const canonical = rules
-    .map((r) => JSON.stringify([r.id, r.version, r.tribute, r.condition, r.effects, r.priority, r.validity.from.getTime(), r.validity.to?.getTime() ?? null]))
+    .map((r) => JSON.stringify([r.id, Number(r.version), r.tribute, r.condition, r.effects, Number(r.priority), r.status, r.validity.from.getTime(), r.validity.to?.getTime() ?? null]))
     .sort()
     .join(";");
   let h1 = 0x811c9dc5;

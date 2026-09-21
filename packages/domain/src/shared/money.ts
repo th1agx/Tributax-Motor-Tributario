@@ -62,10 +62,17 @@ export class Money {
       parts.push(part);
       distributed += part;
     }
+    // resíduo distribuído nos primeiros pesos — também para negativos
+    // (auditoria 2.10: o laço só rodava com remainder > 0 e perdia centavos)
     let remainder = this.cents - distributed;
-    for (let i = 0; remainder > 0 && i < parts.length; i++, remainder--) {
-      parts[i]! += 1;
+    const step = remainder > 0 ? 1 : -1;
+    let i = 0;
+    while (remainder !== 0 && i < parts.length) {
+      parts[i]! += step;
+      remainder -= step;
+      i++;
     }
+    if (remainder !== 0) parts[parts.length - 1]! += remainder; // defensivo
     return parts.map((p) => new Money(p));
   }
 }

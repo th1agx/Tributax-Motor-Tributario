@@ -108,6 +108,10 @@ export function mapRequest(req: TaxCalculationRequest, issuerDefaults: { state: 
       ...(c?.origin !== undefined && c.origin !== "AUTO" ? { origin: c.origin } : {}),
       ...(discounts !== undefined && discounts > 0 ? { discountCents: discounts } : {}),
       ...(issDeductions !== undefined && issDeductions > 0 ? { issDeductionCents: issDeductions } : {}),
+      // despesas acessórias por item (base de ICMS/ST, LC 87/96 art. 13 §1º I)
+      ...(i.freight !== undefined && i.freight > 0 ? { freightCents: i.freight } : {}),
+      ...(i.insurance !== undefined && i.insurance > 0 ? { insuranceCents: i.insurance } : {}),
+      ...(i.otherCharges !== undefined && i.otherCharges > 0 ? { otherChargesCents: i.otherCharges } : {}),
     };
   });
 

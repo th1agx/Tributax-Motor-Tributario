@@ -13,10 +13,12 @@ export class RateLimitGuard implements CanActivate {
 
   private readonly defaultPerMinute: number;
   private readonly capacity: number;
+  private readonly maxBuckets: number;
 
   constructor() {
     this.defaultPerMinute = Number(process.env.RATE_LIMIT_RPM ?? 240);
     this.capacity = Number(process.env.RATE_LIMIT_BURST ?? 60);
+    this.maxBuckets = Number(process.env.RATE_LIMIT_MAX_KEYS ?? 10_000);
   }
 
   canActivate(ctx: ExecutionContext): boolean {
@@ -33,6 +35,21 @@ export class RateLimitGuard implements CanActivate {
         "anon");
 
     const now = Date.now();
+    // evicção (auditoria §4): mapa sem teto cresce sem limite em instância
+    // pública; buckets parados (>10 min sem uso) são removidos quando o
+    // mapa passa do máximo.
+    if (this.buckets.size > this.maxBuckets) {
+      for (const [k, b] of this.buckets) {
+        if (now - b.last > 10 * 60_000) this.buckets.delete(k);
+      }
+      // ainda acima: remove os mais antigos
+      if (this.buckets.size > this.maxBuckets) {
+        const oldest = [...this.buckets.entries()]
+          .sort((a, b) => a[1].last - b[1].last)
+          .slice(0, this.buckets.size - this.maxBuckets);
+        for (const [k] of oldest) this.buckets.delete(k);
+      }
+    }
     const bucket = this.buckets.get(String(key)) ?? { tokens: this.capacity, last: now };
     const refill = ((now - bucket.last) / 60_000) * perMinute;
     const tokens = Math.min(this.capacity, bucket.tokens + refill);
