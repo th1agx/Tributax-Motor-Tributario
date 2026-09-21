@@ -40,6 +40,22 @@ export interface PipelineInput {
   readonly rounding?: RoundingPolicy;
 }
 
+/**
+ * Decisão POR ITEM (auditoria 2.6): cada item é decidido isoladamente —
+ * predicados de item (ncmIn/ncmStartsWith/itemOriginIs/serviceCodeIs)
+ * avaliam contra ESTE item, e a base é o valor DESTE item. CST, CFOP, base
+ * e alíquota são por linha; uma regra "medicamento alíquota zero" zera o
+ * tributo daquele item, não da nota inteira.
+ */
+export function calculatePerItem(
+  input: PipelineInput,
+): readonly { readonly itemId: string; readonly decision: TaxDecision }[] {
+  return input.ctx.items.map((item) => ({
+    itemId: item.id,
+    decision: calculate({ ...input, ctx: { ...input.ctx, items: [item] } }),
+  }));
+}
+
 interface CompiledRule {
   readonly rule: TaxRule;
   readonly spec: Spec;

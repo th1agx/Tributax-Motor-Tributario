@@ -5,7 +5,7 @@ import { ENGINE_VERSION, inferCfop, fiscalCodeFor, netStCents } from "@tributax/
 import type { TaxDecision, FiscalContext } from "@tributax/domain";
 import { mapRequest, PayloadValidationError, type Inference } from "./tax-decision.mapper.js";
 import { InMemoryDecisionStore, type DecisionStore } from "./decision-store.js";
-import { resolveIcms, resolvePisCofins, resolveIssRetentions, resolveIpi, resolveIbsCbs, resolveIss, resolveIcmsSt, resolveSimplesDas, type RuleSource } from "./rule-source.js";
+import { resolveItemTaxes, type RuleSource } from "./rule-source.js";
 import { defaultPartyStore, issuerProfileAt, PARTY_STORE } from "../parties/parties.controller.js";
 import { defaultRuleCatalog, RULE_CATALOG } from "../rules/rule-admin.controller.js";
 import type { IssuerProfile, PartyStore } from "../parties/parties.controller.js";
@@ -138,37 +138,49 @@ export class TaxDecisionsController {
       return d;
     };
     const mapped = mapRequest(req, issuer);
-    const result = await resolveIcms(mapped.ctx, this.ruleSource);
-    const federal = await resolvePisCofins(mapped.ctx, this.ruleSource);
 
-    const taxes: TaxItem[] = [toTaxItem("ICMS", collect(result.icms), mapped.ctx.regime)];
-    if (result.difal) {
-      taxes.push(toTaxItem("DIFAL", collect(result.difal), mapped.ctx.regime));
-      if (result.fcp) taxes.push(toTaxItem("FCP", collect(result.fcp), mapped.ctx.regime));
+    // Decisão POR ITEM (auditoria 2.6): cada linha é decidida isoladamente —
+    // itemId real, base e alíquotas por item; regra de NCM afeta só o item.
+    let rulesetHash = "";
+    const itemResults: { itemId: string; taxes: TaxItem[] }[] = [];
+    for (const item of mapped.ctx.items) {
+      const itemCtx = { ...mapped.ctx, items: [item] };
+      const t = await resolveItemTaxes(itemCtx, this.ruleSource);
+      rulesetHash = t.icms.icms.rulesetHash;
+
+      const taxes: TaxItem[] = [toTaxItem("ICMS", collect(t.icms.icms), mapped.ctx.regime)];
+      if (t.icms.difal) {
+        taxes.push(toTaxItem("DIFAL", collect(t.icms.difal), mapped.ctx.regime));
+        if (t.icms.fcp) taxes.push(toTaxItem("FCP", collect(t.icms.fcp), mapped.ctx.regime));
+      }
+      taxes.push(toTaxItem("PIS", collect(t.federal.pis), mapped.ctx.regime));
+      taxes.push(toTaxItem("COFINS", collect(t.federal.cofins), mapped.ctx.regime));
+      taxes.push(toTaxItem("IRRF", collect(t.retentions.irrf), mapped.ctx.regime));
+      taxes.push(toTaxItem("CSRF", collect(t.retentions.csrf), mapped.ctx.regime));
+      // ICMS-ST: só entra na resposta quando há regra (sem ST, sem ruído)
+      if (t.st.icmsSt.outcome.kind === "TAXED") {
+        const net = netStCents(t.st.icmsSt, t.icms.icms);
+        const stItem = toTaxItem("ICMS_ST", collect(t.st.icmsSt), mapped.ctx.regime);
+        taxes.push(net !== undefined ? { ...stItem, amountCents: net } : stItem);
+      }
+      taxes.push(toTaxItem("IPI", collect(t.ipi.ipi), mapped.ctx.regime));
+      taxes.push(toTaxItem("CBS", collect(t.reform.cbs), mapped.ctx.regime));
+      taxes.push(toTaxItem("IBS", collect(t.reform.ibs), mapped.ctx.regime));
+      if (t.das.das.outcome.kind === "TAXED") {
+        taxes.push(toTaxItem("DAS", collect(t.das.das), mapped.ctx.regime));
+      }
+      taxes.push(toTaxItem("ISS", collect(t.iss.iss), mapped.ctx.regime));
+      itemResults.push({ itemId: item.id, taxes });
     }
-    taxes.push(toTaxItem("PIS", collect(federal.pis), mapped.ctx.regime));
-    taxes.push(toTaxItem("COFINS", collect(federal.cofins), mapped.ctx.regime));
-    const retentions = await resolveIssRetentions(mapped.ctx, this.ruleSource);
-    taxes.push(toTaxItem("IRRF", collect(retentions.irrf), mapped.ctx.regime));
-    taxes.push(toTaxItem("CSRF", collect(retentions.csrf), mapped.ctx.regime));
-    // ICMS-ST: só entra na resposta quando há regra (sem ST, sem ruído)
-    const st = await resolveIcmsSt(mapped.ctx, this.ruleSource);
-    if (st.icmsSt.outcome.kind === "TAXED") {
-      const net = netStCents(st.icmsSt, result.icms);
-      const item = toTaxItem("ICMS_ST", collect(st.icmsSt), mapped.ctx.regime);
-      taxes.push(net !== undefined ? { ...item, amountCents: net } : item);
+
+    const totalsMap = new Map<string, number>();
+    for (const { taxes } of itemResults) {
+      for (const t of taxes) {
+        if (t.amountCents !== undefined) {
+          totalsMap.set(t.tax, (totalsMap.get(t.tax) ?? 0) + t.amountCents);
+        }
+      }
     }
-    const ipi = await resolveIpi(mapped.ctx, this.ruleSource);
-    taxes.push(toTaxItem("IPI", collect(ipi.ipi), mapped.ctx.regime));
-    const reform = await resolveIbsCbs(mapped.ctx, this.ruleSource);
-    taxes.push(toTaxItem("CBS", collect(reform.cbs), mapped.ctx.regime));
-    taxes.push(toTaxItem("IBS", collect(reform.ibs), mapped.ctx.regime));
-    const das = await resolveSimplesDas(mapped.ctx, this.ruleSource);
-    if (das.das.outcome.kind === "TAXED") {
-      taxes.push(toTaxItem("DAS", collect(das.das), mapped.ctx.regime));
-    }
-    const iss = await resolveIss(mapped.ctx, this.ruleSource);
-    taxes.push(toTaxItem("ISS", collect(iss.iss), mapped.ctx.regime));
 
     const cfop = mapped.ctx.cfop
       ? { code: mapped.ctx.cfop, basis: "CFOP informado pelo emissor (trava validada)" }
@@ -187,15 +199,14 @@ export class TaxDecisionsController {
       decisionId: randomUUID(),
       correlationId: req.correlationId,
       engineVersion: ENGINE_VERSION,
-      rulesetHash: result.icms.rulesetHash,
+      rulesetHash,
       asOfDate: mapped.ctx.asOfDate.toISOString().slice(0, 10),
       derivedTier: mapped.derivedTier,
       fiscalDocumentType: mapped.ctx.fiscalDocumentType,
       operationKind: mapped.ctx.operationKind,
       ...(cfop ? { cfop } : {}),
-      items: [{ itemId: "*", taxes }],
-      totals: taxes.reduce<{ tax: string; amountCents: number }[]>((acc, t) =>
-        t.amountCents !== undefined ? [...acc, { tax: t.tax, amountCents: t.amountCents }] : acc, []),
+      items: itemResults,
+      totals: [...totalsMap.entries()].map(([tax, amountCents]) => ({ tax, amountCents })),
       inferences: [...inferences, ...mapped.inferences],
       warnings: [...new Set(allDecisions.flatMap((d) => d.warnings))],
       errors: [],

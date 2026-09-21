@@ -69,6 +69,43 @@ describe("API e2e — /v1/tax-decisions", () => {
     expect(body.totals).toHaveLength(6);
   });
 
+  it("decisão POR ITEM (fim do itemId '*'): medicamento NCM 30 zera IPI só naquele item", async () => {
+    const res = await request(app.getHttpServer())
+      .post("/v1/tax-simulations")
+      .send({
+        correlationId: "e2e-per-item",
+        ...EMITTER,
+        items: [
+          { id: "normal", description: "Eletrônico", quantity: 1, unitPrice: { amount: 100000 }, classification: { ncm: "84713012" } },
+          { id: "medicamento", description: "Medicamento", quantity: 1, unitPrice: { amount: 50000 }, classification: { ncm: "30049099" } },
+        ],
+      })
+      .expect(201);
+
+    // itens com itemId real, não "*"
+    const ids = res.body.items.map((i: { itemId: string }) => i.itemId).sort();
+    expect(ids).toEqual(["medicamento", "normal"]);
+
+    const byItem = Object.fromEntries(
+      res.body.items.map((i: { itemId: string; taxes: { tax: string; outcome: string; amountCents?: number }[] }) => [
+        i.itemId,
+        Object.fromEntries(i.taxes.map((t) => [t.tax, t])),
+      ]),
+    );
+    // medicamento (capítulo 30): IPI alíquota zero NAQUELA linha
+    expect(byItem.medicamento.IPI.outcome).toBe("TAXED");
+    expect(byItem.medicamento.IPI.amountCents).toBe(0);
+    expect(byItem.medicamento.IPI.appliedRules.join(" ")).toContain("IPI-MEDICAMENTOS-ZERO");
+    // item normal de outro capítulo não é arrastado para a regra do medicamento
+    expect(byItem.normal.IPI.appliedRules.join(" ")).not.toContain("IPI-MEDICAMENTOS-ZERO");
+    // ICMS interno MG 18% por item: 18000 e 9000
+    expect(byItem.normal.ICMS.amountCents).toBe(18000);
+    expect(byItem.medicamento.ICMS.amountCents).toBe(9000);
+    // total consolida os dois itens
+    const totalIcms = res.body.totals.find((t: { tax: string }) => t.tax === "ICMS");
+    expect(totalIcms.amountCents).toBe(27000);
+  });
+
   it("sem emissor → 400 explícito (fim do default MG, auditoria 2.7)", async () => {
     await request(app.getHttpServer())
       .post("/v1/tax-simulations")

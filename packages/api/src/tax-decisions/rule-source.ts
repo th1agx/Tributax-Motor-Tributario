@@ -88,3 +88,38 @@ export async function resolveIss(
   const rules = await source.loadRules(ctx);
   return calculateIssWith(ctx, rules);
 }
+
+/** Decisões de TODOS os tributos para UM item (contexto de item único). */
+export interface ItemTaxes {
+  readonly icms: IcmsDecision;
+  readonly federal: PisCofinsDecision;
+  readonly retentions: IssRetentionDecision;
+  readonly st: IcmsStDecision;
+  readonly ipi: IpiDecision;
+  readonly reform: IbsCbsDecision;
+  readonly das: SimplesDasDecision;
+  readonly iss: IssDecision;
+}
+
+/**
+ * Resolução POR ITEM (auditoria 2.6): carrega as regras UMA vez (data da
+ * operação) e decide cada item isoladamente — base e predicados de item
+ * referem-se àquele item. Uma regra por NCM (ex.: IPI medicamento zero)
+ * afeta só o item daquele NCM, não a nota inteira.
+ */
+export async function resolveItemTaxes(
+  itemCtx: FiscalContext,
+  source: RuleSource,
+): Promise<ItemTaxes> {
+  const rules = await source.loadRules(itemCtx);
+  return {
+    icms: calculateIcmsWith(itemCtx, rules),
+    federal: calculatePisCofinsWith(itemCtx, rules),
+    retentions: calculateIssRetentionsWith(itemCtx, rules),
+    st: calculateIcmsStWith(itemCtx, rules),
+    ipi: calculateIpiWith(itemCtx, rules),
+    reform: calculateIbsCbsWith(itemCtx, rules),
+    das: calculateSimplesDasWith(itemCtx, rules),
+    iss: calculateIssWith(itemCtx, rules),
+  };
+}
