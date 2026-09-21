@@ -12,6 +12,8 @@
 --
 -- Idempotente: dropa a v1 se existir e cria a v2 apenas se ausente.
 
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 ALTER TABLE tax_rules DROP CONSTRAINT IF EXISTS tax_rules_no_overlap;
 
 DO $$
