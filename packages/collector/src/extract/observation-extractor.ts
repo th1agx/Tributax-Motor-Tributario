@@ -125,6 +125,14 @@ function validateObservation(raw: unknown, chunkByUrl: Map<string, NormChunk>): 
     return reject(`validFrom inválido: ${String(validFrom)}`);
   }
   if (Number.isNaN(Date.parse(validFrom))) return reject(`validFrom não é data real: ${validFrom}`);
+  // sanidade (auditoria 3.5): 1900 ou 2999 são datas válidas e sem sentido
+  {
+    const year = Number(validFrom.slice(0, 4));
+    const maxYear = new Date().getUTCFullYear() + 5;
+    if (year < 1990 || year > maxYear) {
+      return reject(`validFora da janela de plausibilidade [1990, ${maxYear}]: ${validFrom}`);
+    }
+  }
 
   const confidence = o.confidence;
   if (typeof confidence !== "number" || confidence < 0 || confidence > 1) {
@@ -150,12 +158,15 @@ function validateObservation(raw: unknown, chunkByUrl: Map<string, NormChunk>): 
   };
 }
 
-/** 4,65% → "4,65" e "4.65"; 18% → "18" (e "18,00"/"18.00"). */
+/** 4,65% → "4,65" e "4.65"; 18% → "18", "18,00" e "18.00" (texto legal usa vírgula). */
 function rateAppearsInText(rateBp: number, text: string): boolean {
   const pct = rateBp / 100;
   const variants = new Set<string>();
-  if (Number.isInteger(pct)) variants.add(String(pct));
-  else {
+  if (Number.isInteger(pct)) {
+    variants.add(String(pct));
+    variants.add(`${pct},00`);
+    variants.add(`${pct}.00`);
+  } else {
     variants.add(pct.toFixed(2).replace(".", ","));
     variants.add(pct.toFixed(2));
   }

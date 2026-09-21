@@ -1,12 +1,40 @@
 import pg from "pg";
-import type { LegalNormDocument } from "@tributax/collector";
-import type { NormChunk, NormStore } from "@tributax/collector";
 
 /**
  * Adapter Postgres/pgvector do port NormStore (ADR-013). Implementa a
  * interface por duck typing, como os demais adapters. Idempotente:
  * norma re-coletada é no-op; embedding de chunk sobrescreve.
+ *
+ * Os tipos são declarados LOCALMENTE (estruturalmente idênticos aos do
+ * @tributax/collector): infra não importa types do collector — a dependência
+ * de tipos cruzada collector↔infra criava ciclo no build (TS5055).
  */
+export interface LegalNormDocument {
+  readonly id: string;
+  readonly url: string;
+  readonly publishedAt: string;
+  readonly title: string;
+  readonly text: string;
+  readonly source: string;
+}
+
+export interface NormChunk {
+  readonly id: string;
+  readonly normId: string;
+  readonly url: string;
+  readonly publishedAt: string;
+  readonly text: string;
+  readonly embedding?: readonly number[];
+}
+
+export interface NormStore {
+  saveNorm(norm: LegalNormDocument): Promise<boolean>;
+  saveChunk(chunk: NormChunk): Promise<void>;
+  recentChunks(limit: number): Promise<readonly NormChunk[]>;
+  searchChunks(queryEmbedding: readonly number[], topK: number): Promise<readonly NormChunk[]>;
+  hasNorm(normId: string): Promise<boolean>;
+}
+
 export class PostgresNormStore implements NormStore {
   private readonly pool: pg.Pool;
 

@@ -28,7 +28,7 @@ export interface TaxDecision {
   readonly asOfDate: Date;
   readonly tribute: TributeId;
   readonly outcome: TaxOutcome;
-  readonly appliedRule?: { readonly id: string; readonly version: number };
+  readonly appliedRule?: { readonly id: string; readonly version: number; readonly reviewReason?: string };
   readonly trace: readonly DecisionStep[];
   readonly warnings: readonly string[];
 }
@@ -136,7 +136,11 @@ export function calculate(input: PipelineInput): TaxDecision {
     asOfDate: ctx.asOfDate,
     tribute,
     outcome,
-    appliedRule: { id: winner.id, version: winner.version },
+    appliedRule: {
+      id: winner.id,
+      version: winner.version,
+      ...(winner.reviewReason ? { reviewReason: winner.reviewReason } : {}),
+    },
     trace,
     warnings,
   };
@@ -165,6 +169,25 @@ function describeResolution(c: CompiledRule): string {
 
 function compute(rule: TaxRule, ctx: FiscalContext, rounding: RoundingPolicy): TaxOutcome {
   const basis = applyBasisEffects(rule, Money.fromCents(totalGoodsCents(ctx)));
+  const difal = rule.effects.find((e) => e.type === "applyDifal");
+  if (difal && difal.type === "applyDifal") {
+    // Base dupla (LC 190/22, art. 13, IX, "b" e §6º, II):
+    // ICMS interestadual = valor × alíq. inter.
+    // base no destino = (valor − ICMS inter) / (1 − alíq. interna)
+    // DIFAL = base_dest × alíq. interna − ICMS inter
+    const interIcms = Math.trunc((basis.cents * difal.interstateRateBp) / 10000);
+    const denom = 10000 - difal.internalRateBp;
+    if (denom <= 0) throw new Error(`regra ${rule.id}: alíquota interna >= 100% inválida para base dupla`);
+    const baseDest = Math.trunc(((basis.cents - interIcms) * 10000) / denom);
+    const internalFull = Math.trunc((baseDest * difal.internalRateBp) / 10000);
+    return {
+      kind: "TAXED",
+      basisCents: baseDest,
+      rateBp: difal.internalRateBp - difal.interstateRateBp,
+      amountCents: internalFull - interIcms,
+      ...(rule.legalBasis ? { legalBasis: rule.legalBasis } : {}),
+    };
+  }
   const applySt = rule.effects.find((e) => e.type === "applySt");
   if (applySt && applySt.type === "applySt") {
     // base ST = valor da operação × (1 + MVA) — Conv. 92/15, art. 2º, IV

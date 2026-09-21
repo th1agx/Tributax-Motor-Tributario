@@ -14,7 +14,7 @@
 import { runWatchCycle, type WatchCycleResult } from "./watch-cycle.js";
 import { RssCollector } from "../sources/rss-collector.js";
 import { DouCollector } from "../sources/dou-collector.js";
-import { InMemoryNormStore } from "../store/norm-store.js";
+import { InMemoryNormStore, type NormStore } from "../store/norm-store.js";
 import { FakeEmbeddingProvider, OpenAIEmbeddingProvider } from "../rag/embeddings.js";
 import { LlmObservationExtractor, type LlmClient } from "../extract/observation-extractor.js";
 import { OpenAiChatClient } from "../extract/openai-client.js";
@@ -75,10 +75,32 @@ async function main(): Promise<void> {
   const embeddings = hasLlm ? new OpenAIEmbeddingProvider() : new FakeEmbeddingProvider();
   const llm: LlmClient = hasLlm ? new OpenAiChatClient() : { completeJson: async () => [] };
 
+  // NormStore PERSISTENTE quando há banco (auditoria 3.1): pgvector já
+  // provisionado e ocioso; memória morre com o processo e re-embeda tudo.
+  let store: NormStore = new InMemoryNormStore();
+  let storeCloser: (() => Promise<void>) | undefined;
+  if (process.env.DATABASE_URL) {
+    try {
+      // import dinâmico com especificador NÃO-literal: dependência de
+      // runtime opcional (infra é construída depois no pipeline de build);
+      // o tipo é fixado localmente pelo cast.
+      const infraModule = "@tributax/infrastructure";
+      const { PostgresNormStore } = (await import(infraModule)) as {
+        PostgresNormStore: new (url: string) => NormStore & { close(): Promise<void> };
+      };
+      store = new PostgresNormStore(process.env.DATABASE_URL);
+      storeCloser = () => store === undefined ? Promise.resolve() : (store as unknown as { close(): Promise<void> }).close();
+    } catch (e) {
+      console.warn(`[rag-watch] PostgresNormStore indisponível (${(e as Error).message}) — usando memória`);
+    }
+  } else {
+    console.warn("[rag-watch] sem DATABASE_URL — NormStore em memória (base não acumula entre execuções)");
+  }
+
   const result = await runWatchCycle({
     target: { tribute: args.tribute, ...(args.uf !== undefined ? { jurisdictionCode: args.uf } : {}) },
     collector: composite,
-    store: new InMemoryNormStore(),
+    store,
     embeddings,
     extractor: new LlmObservationExtractor(llm),
     sinceDays: args.since,
@@ -92,20 +114,64 @@ async function main(): Promise<void> {
   for (const r of result.rejections) console.error(`[rag-watch] rejeitado: ${r.reason}`);
 
   if (args.apply) {
-    const res = await fetch(`${args.api}/v1/monitoring/watch-reports`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(result.report),
-    });
-    if (res.status === 404) {
-      // a API ainda não expõe ingestão de reports; o fluxo oficial hoje é o
-      // watch-agent.cli.ts consumindo o arquivo gravado
-      console.error(`[rag-watch] API não expõe watch-reports (404); use: npx tsx ../../api/src/monitoring/watch-agent.cli.ts --api ${args.api} --report ${args.out} --apply`);
-      process.exit(2);
+    // apply REAL (auditoria 3.2): a rota /v1/monitoring/watch-reports não
+    // existe; o fluxo oficial é diff do report contra o catálogo + POST de
+    // propostas DRAFT AI_SUGGESTED — exatamente o que o watch-agent faz.
+    // Reimplementado aqui para o --apply funcionar de ponta a ponta.
+    const adminKey = process.env.TRIBUTAX_ADMIN_KEY ?? process.env.TRIBUTAX_API_KEY ?? "";
+    if (!adminKey) {
+      console.error("[rag-watch] --apply exige TRIBUTAX_ADMIN_KEY (catálogo é admin-only)");
+      if (storeCloser) await storeCloser();
+      process.exit(1);
     }
-    if (!res.ok) throw new Error(`apply: HTTP ${res.status} — ${await res.text()}`);
-    console.error("[rag-watch] report aplicado — propostas DRAFT criadas (triagem humana pendente)");
+    const authHeaders = { "x-admin-key": adminKey, "content-type": "application/json" };
+
+    const rulesRes = await fetch(`${args.api}/v1/rules`, { headers: authHeaders });
+    if (!rulesRes.ok) {
+      console.error(`[rag-watch] falha ao ler catálogo: HTTP ${rulesRes.status}`);
+      if (storeCloser) await storeCloser();
+      process.exit(1);
+    }
+    const rules = (await rulesRes.json()) as readonly {
+      id: string; version: number; tribute: string; name: string;
+      jurisdiction: { scope: string; code?: string }; condition: unknown;
+      effects: readonly { type: string; rateBp?: number; pctBp?: number }[];
+      priority: number; validity: { from: string; to?: string | null };
+      status: string; legalBasis?: unknown; origin: string; reviewReason?: string;
+    }[];
+    const catalog = rules.map((r) => ({
+      id: r.id, version: r.version, tribute: r.tribute, name: r.name,
+      jurisdiction: { scope: r.jurisdiction.scope, ...(r.jurisdiction.code ? { code: r.jurisdiction.code } : {}) },
+      condition: r.condition as never, effects: r.effects as never, priority: r.priority,
+      validity: { from: new Date(r.validity.from), ...(r.validity.to ? { to: new Date(r.validity.to) } : {}) },
+      status: r.status as never, ...(r.legalBasis ? { legalBasis: r.legalBasis as never } : {}),
+      origin: r.origin as never, ...(r.reviewReason ? { reviewReason: r.reviewReason } : {}),
+    }));
+
+    const { diffCatalog } = await import("@tributax/domain");
+    const normalized = {
+      generatedAt: result.report.generatedAt,
+      observations: result.report.observations.map((o) => ({
+        ...o,
+        sources: o.sources.map((s) => ({ ...s, publishedAt: new Date(s.publishedAt) })),
+      })),
+    };
+    const { alerts, proposals } = diffCatalog(normalized, catalog as never);
+    for (const a of alerts) console.error(`[rag-watch][ALERT] ${a.summary}`);
+    console.error(`[rag-watch] apply: ${alerts.length} alertas, ${proposals.length} propostas`);
+
+    for (const p of proposals) {
+      const res2 = await fetch(`${args.api}/v1/rules`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify(p),
+      });
+      const body = (await res2.json()) as { rule?: { id: string }; message?: string };
+      console.error(res2.ok ? `[rag-watch][DRAFT] ${body.rule?.id} criada` : `[rag-watch][ERRO] HTTP ${res2.status}: ${body.message}`);
+    }
   }
+
+  if (storeCloser) await storeCloser();
 }
 
 function summary(r: WatchCycleResult): string {

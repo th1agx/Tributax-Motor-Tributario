@@ -15,25 +15,47 @@ describe("DAS — Simples Nacional Anexo I", () => {
     }
   });
 
-  it("faixas 2 a 6 casam pelos limites de RBT12", () => {
-    const casos: readonly [number, number][] = [
-      [18_000_000, 730],   // 180k → 7,3%
-      [36_000_000, 950],   // 360k → 9,5%
-      [54_000_000, 1070],  // 540k → 10,7%
-      [72_000_000, 1430],  // 720k → 14,3%
-      [180_000_000, 1900], // 1,8M → 19%
+  it("faixas casam pelos limites da LC 123/06 (LC 155/16) — efetiva = fórmula da lei", () => {
+    // Tabela do Anexo I (nominal bp, dedução cents, RBT12 de teste acima do limite inferior)
+    const casos: readonly [number, number, number][] = [
+      // [rbt12Cents, nominalBp, deducaoCents]
+      [18_000_001, 730, 594_000],
+      [36_000_001, 950, 1_386_000],
+      [72_000_001, 1070, 2_250_000],
+      [180_000_001, 1430, 8_730_000],
+      [360_000_001, 1900, 37_800_000],
     ];
-    for (const [rbt, rateBp] of casos) {
+    for (const [rbt, nominalBp, ded] of casos) {
       const d = calculateSimplesDas(simples(rbt));
       expect(d.das.outcome.kind, `RBT12 ${rbt}`).toBe("TAXED");
-      if (d.das.outcome.kind === "TAXED") expect(d.das.outcome.rateBp, `RBT12 ${rbt}`).toBe(rateBp);
+      // efetiva (LC 123/06): nominal − dedução × 10000 / RBT12
+      const expected = Math.max(0, nominalBp - Math.round((ded * 10000) / rbt));
+      if (d.das.outcome.kind === "TAXED") {
+        expect(d.das.outcome.rateBp, `RBT12 ${rbt}`).toBe(expected);
+        expect(d.das.appliedRule?.id).toContain("ANEXO1");
+      }
     }
   });
 
-  it("7ª faixa (3,6–4,8M) = 22,5% com NEEDS_REVIEW declarado", () => {
-    const d = calculateSimplesDas(simples(400_000_000));
+  it("custo concreto da auditoria: comércio RBT12 2M, venda R$ 10.000 → ~R$ 993,50 (lei), não R$ 1.900", () => {
+    const d = calculateSimplesDas(makeCtx({
+      regime: "SIMPLES_NACIONAL",
+      rbt12Cents: 200_000_000,
+      items: [{ id: "1", description: "Produto", quantity: 1, unitPriceCents: 1_000_000 }],
+    }));
     expect(d.das.outcome.kind).toBe("TAXED");
-    if (d.das.outcome.kind === "TAXED") expect(d.das.outcome.rateBp).toBe(2250);
+    if (d.das.outcome.kind === "TAXED") {
+      // efetiva = 1430 − round(8730000×10000/200000000) = 1430 − 437 = 993 bp ≈ 9,93%
+      expect(d.das.outcome.rateBp).toBe(993);
+      expect(d.das.outcome.amountCents).toBe(99_300);
+    }
+  });
+
+  it("NÃO existe 7ª faixa — 3,6–4,8M é F6 com dedução; acima de 4,8M fica fora", () => {
+    const f6 = calculateSimplesDas(simples(400_000_000));
+    expect(f6.das.outcome.kind).toBe("TAXED");
+    // efetiva (fórmula da lei) = 1900 − round(37.800.000×10000/400.000.000) = 1900 − 945
+    if (f6.das.outcome.kind === "TAXED") expect(f6.das.outcome.rateBp).toBe(955);
   });
 
   it("sem RBT12 informado → NO_RULE_FOUND (nunca assume faixa por conta própria)", () => {

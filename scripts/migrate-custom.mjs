@@ -16,7 +16,7 @@ if (!url) {
 }
 
 const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../packages/infrastructure/drizzle/custom");
-const files = ["01_no_overlap.sql", "02_pgvector.sql", "03_tenants.sql"];
+const files = ["01_no_overlap.sql", "02_pgvector.sql", "03_tenants.sql", "04_no_overlap_v2.sql"];
 
 const pool = new pg.Pool({ connectionString: url });
 try {

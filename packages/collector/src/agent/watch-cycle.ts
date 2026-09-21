@@ -56,9 +56,21 @@ export async function runWatchCycle(config: WatchCycleConfig, now: Date = new Da
   let normsNew = 0;
   for (const norm of norms) {
     if (await store.saveNorm(norm)) normsNew++;
-    for (const chunk of chunkNorm(norm)) {
-      const [vector] = await embeddings.embed([chunk.text]);
-      await store.saveChunk({ ...chunk, embedding: vector! });
+  }
+  // embed em LOTE por norma (auditoria 3.6): uma requisição por norma em
+  // vez de uma por chunk; falha de embedding não derruba o ciclo inteiro.
+  let chunksEmbedded = 0;
+  for (const norm of norms) {
+    const chunks = chunkNorm(norm);
+    if (chunks.length === 0) continue;
+    try {
+      const vectors = await embeddings.embed(chunks.map((c) => c.text));
+      for (const [i, chunk] of chunks.entries()) {
+        await store.saveChunk({ ...chunk, embedding: vectors[i]! });
+        chunksEmbedded++;
+      }
+    } catch (e) {
+      console.warn(`[watch-cycle] embedding falhou para norma ${norm.url}: ${(e as Error).message}`);
     }
   }
 
@@ -79,7 +91,7 @@ export async function runWatchCycle(config: WatchCycleConfig, now: Date = new Da
     stats: {
       normsCollected: norms.length,
       normsNew,
-      chunksEmbedded: norms.reduce((acc, n) => acc + chunkNorm(n).length, 0),
+      chunksEmbedded,
       chunksRetrieved: retrieved.length,
     },
   };

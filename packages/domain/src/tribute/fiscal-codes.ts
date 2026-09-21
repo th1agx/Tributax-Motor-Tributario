@@ -115,14 +115,16 @@ export function fiscalCodeFor(
   }
 
   // IPI: Simples não gera CST de IPI (grupo não informado); normal segue CST
+  // Correção 2026-09 (auditoria): 40/41 são códigos de ICMS — o universo de
+  // CST-IPI de SAÍDA é 50/51/52.../99. 40 e 41 nunca são CST de IPI.
   if (tribute === "IPI" && isSimples) return undefined;
   if (tribute === "IPI") {
     switch (outcome.kind) {
-      case "TAXED": return { kind: "CST", code: "99" }; // tributação normal c/ recolhimento (ou 50 se a prazo)
-      case "EXEMPT": return { kind: "CST", code: "40" };
-      case "IMMUNE": return { kind: "CST", code: "40" };
-      case "NON_TAXABLE": return { kind: "CST", code: "41" };
-      case "ZERO_RATED": return { kind: "CST", code: "00" };
+      case "TAXED": return { kind: "CST", code: "50" }; // saída tributada
+      case "EXEMPT": return { kind: "CST", code: "51" }; // saída não tributada (NEEDS_REVIEW: 52 isenta?)
+      case "IMMUNE": return { kind: "CST", code: "51" };
+      case "NON_TAXABLE": return { kind: "CST", code: "51" };
+      case "ZERO_RATED": return { kind: "CST", code: "99" }; // outras saídas (NEEDS_REVIEW)
       default: return undefined;
     }
   }

@@ -5,8 +5,11 @@ import { EnvTenantStore, getTenantStore, type RequestWithTenant } from "./tenant
 /**
  * ApiKeyGuard (ADR-009 multi-tenant): resolve a API key via TenantStore
  * (Postgres em produção; TRIBUTAX_API_KEYS em dev) e anexa o tenant à
- * request para o rate limit por quota. Sem nenhuma key configurada, o
- * guard abre (modo dev) — segurança em produção é configurar, não remover.
+ * request para o rate limit por quota.
+ *
+ * FAIL-CLOSED (auditoria §4): sem keys configuradas o guard REJEITA com 503,
+ * nunca abre. O modo aberto explícito de desenvolvimento exige
+ * TRIBUTAX_DEV_OPEN_AUTH=1 — opt-in documentado, não estado implícito.
  * Rotas públicas (docs/health) marcadas com @Public().
  */
 
@@ -32,9 +35,20 @@ export class ApiKeyGuard implements CanActivate {
     const store = getTenantStore();
     const req = ctx.switchToHttp().getRequest<RequestWithTenant>();
 
-    // dev: store default (env) sem nenhuma key configurada — guard aberto
+    // Sem keys configuradas: fail-closed, salvo opt-in explícito de dev.
     if (store instanceof EnvTenantStore && !store.configured) {
-      return true; // dev: sem tenant, sem chave
+      if (process.env.TRIBUTAX_DEV_OPEN_AUTH === "1") {
+        return true; // dev explícito (documentado, nunca implícito)
+      }
+      throw new HttpException(
+        {
+          error: "AUTH_NOT_CONFIGURED",
+          message:
+            "nenhuma API key configurada (TRIBUTAX_API_KEYS ou tabela tenants) — recusando " +
+            "fail-open; para desenvolvimento local use TRIBUTAX_DEV_OPEN_AUTH=1",
+        },
+        503,
+      );
     }
 
     const presented =

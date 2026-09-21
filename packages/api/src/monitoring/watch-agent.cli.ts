@@ -44,8 +44,15 @@ async function main(): Promise<void> {
     }[];
   };
 
-  // catálogo vigente via API pública
-  const res = await fetch(`${args.api}/v1/rules`);
+  // catálogo via API — /v1/rules exige admin key (auditoria 3.3/3.7)
+  const adminKey = process.env.TRIBUTAX_ADMIN_KEY ?? process.env.TRIBUTAX_API_KEY ?? "";
+  if (!adminKey) {
+    console.error("[watch-agent] TRIBUTAX_ADMIN_KEY ausente — o catálogo é admin-only; configure a env");
+    process.exit(1);
+  }
+  const authHeaders = { "x-admin-key": adminKey, "content-type": "application/json" };
+
+  const res = await fetch(`${args.api}/v1/rules`, { headers: authHeaders });
   if (!res.ok) throw new Error(`falha ao ler catálogo: HTTP ${res.status}`);
   const catalogJson = (await res.json()) as readonly {
     id: string; version: number; tribute: string; name: string;
@@ -93,11 +100,11 @@ async function main(): Promise<void> {
   for (const p of proposals) {
     const created = await fetch(`${args.api}/v1/rules`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: authHeaders,
       body: JSON.stringify(p),
     });
     const body = (await created.json()) as { rule?: { id: string }; message?: string };
-    console.log(created.ok ? `[DRAFT] ${body.rule?.id} criada` : `[ERRO] ${body.message}`);
+    console.log(created.ok ? `[DRAFT] ${body.rule?.id} criada` : `[ERRO] HTTP ${created.status}: ${body.message}`);
   }
 }
 

@@ -19,7 +19,10 @@ export class DouCollector implements NormCollector {
   async collect(keywords: readonly string[], sinceDays: number): Promise<readonly LegalNormDocument[]> {
     const cutoff = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
     const collected: LegalNormDocument[] = [];
-    const editions = [...lastWeekEditions()].slice(-sinceDays);
+    // lastWeekEditions() é [hoje, ontem, ...]; os MAIS RECENTES primeiro —
+    // slice(0, n) pega a janela pedida (auditoria 3.4: slice(-n) pegava os
+    // dias mais antigos e o corte descartava tudo para janelas < 7).
+    const editions = [...lastWeekEditions()].slice(0, sinceDays);
 
     for (const date of editions) {
       const matters = await this.fetchMatters(date);

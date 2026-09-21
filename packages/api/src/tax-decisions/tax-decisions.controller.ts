@@ -25,7 +25,8 @@ import type { Response } from "express";
 export const DECISION_STORE = "DECISION_STORE";
 export const RULE_SOURCE = "RULE_SOURCE";
 
-const ISSUER_DEFAULTS: IssuerProfile = { state: "MG", regime: "NORMAL" };
+// Emissor default REMOVIDO (auditoria 2.7): presunção MG/NORMAL produzia
+// respostas confiantes e erradas; agora sem partyRef é 400 explícito.
 
 @Controller("/v1")
 export class TaxDecisionsController {
@@ -105,61 +106,69 @@ export class TaxDecisionsController {
     if (!req?.correlationId) {
       throw new PayloadValidationError("correlationId é obrigatório");
     }
-    // Emissor: perfil da parte referenciada (regime vigente na data) ou default.
+    // Emissor OBRIGATÓRIO (auditoria 2.7): sem partyRef não há presunção de
+    // UF/regime — resposta silenciosamente errada é pior que erro explícito.
     const asOf = req.asOfDate ? new Date(req.asOfDate) : new Date();
-    let issuer = ISSUER_DEFAULTS;
     const inferences: Inference[] = [];
     const partyRef = req.context?.issuer?.partyRef;
-    if (partyRef) {
-      const party = await this.partyStore.findByIdOrTaxId(partyRef);
-      if (!party) {
-        throw new PayloadValidationError(`emissor não encontrado: ${partyRef}`);
-      }
-      const profile = issuerProfileAt(party, asOf);
-      if (!profile) {
-        throw new PayloadValidationError(
-          `emissor ${partyRef} sem regime vigente em ${asOf.toISOString().slice(0, 10)}`,
-        );
-      }
-      issuer = profile;
-      inferences.push({
-        field: "context.issuer",
-        value: `${profile.state}/${profile.regime}`,
-        evidence: `perfil ${party.taxId} — regime vigente na data da operação`,
-      });
+    if (!partyRef) {
+      throw new PayloadValidationError(
+        "emissor obrigatório: informe context.issuer.partyRef (cadastre em POST /v1/parties)",
+      );
     }
+    const party = await this.partyStore.findByIdOrTaxId(partyRef);
+    if (!party) {
+      throw new PayloadValidationError(`emissor não encontrado: ${partyRef}`);
+    }
+    const issuer = issuerProfileAt(party, asOf);
+    if (!issuer) {
+      throw new PayloadValidationError(
+        `emissor ${partyRef} sem regime vigente em ${asOf.toISOString().slice(0, 10)}`,
+      );
+    }
+    inferences.push({
+      field: "context.issuer",
+      value: `${issuer.state}/${issuer.regime}`,
+      evidence: `perfil ${party.taxId} — regime vigente na data da operação`,
+    });
+    // Todas as decisões de tributo — warnings e trace agregados (auditoria 2.8)
+    const allDecisions: TaxDecision[] = [];
+    const collect = (d: TaxDecision): TaxDecision => {
+      allDecisions.push(d);
+      return d;
+    };
     const mapped = mapRequest(req, issuer);
     const result = await resolveIcms(mapped.ctx, this.ruleSource);
     const federal = await resolvePisCofins(mapped.ctx, this.ruleSource);
 
-    const taxes: TaxItem[] = [toTaxItem("ICMS", result.icms, mapped.ctx.regime)];
+    const taxes: TaxItem[] = [toTaxItem("ICMS", collect(result.icms), mapped.ctx.regime)];
     if (result.difal) {
-      taxes.push(toTaxItem("DIFAL", result.difal, mapped.ctx.regime));
-      if (result.fcp) taxes.push(toTaxItem("FCP", result.fcp, mapped.ctx.regime));
+      taxes.push(toTaxItem("DIFAL", collect(result.difal), mapped.ctx.regime));
+      if (result.fcp) taxes.push(toTaxItem("FCP", collect(result.fcp), mapped.ctx.regime));
     }
-    taxes.push(toTaxItem("PIS", federal.pis, mapped.ctx.regime));
-    taxes.push(toTaxItem("COFINS", federal.cofins, mapped.ctx.regime));
+    taxes.push(toTaxItem("PIS", collect(federal.pis), mapped.ctx.regime));
+    taxes.push(toTaxItem("COFINS", collect(federal.cofins), mapped.ctx.regime));
     const retentions = await resolveIssRetentions(mapped.ctx, this.ruleSource);
-    taxes.push(toTaxItem("IRRF", retentions.irrf, mapped.ctx.regime));
-    taxes.push(toTaxItem("CSRF", retentions.csrf, mapped.ctx.regime));
+    taxes.push(toTaxItem("IRRF", collect(retentions.irrf), mapped.ctx.regime));
+    taxes.push(toTaxItem("CSRF", collect(retentions.csrf), mapped.ctx.regime));
     // ICMS-ST: só entra na resposta quando há regra (sem ST, sem ruído)
     const st = await resolveIcmsSt(mapped.ctx, this.ruleSource);
     if (st.icmsSt.outcome.kind === "TAXED") {
       const net = netStCents(st.icmsSt, result.icms);
-      const item = toTaxItem("ICMS_ST", st.icmsSt, mapped.ctx.regime);
+      const item = toTaxItem("ICMS_ST", collect(st.icmsSt), mapped.ctx.regime);
       taxes.push(net !== undefined ? { ...item, amountCents: net } : item);
     }
     const ipi = await resolveIpi(mapped.ctx, this.ruleSource);
-    taxes.push(toTaxItem("IPI", ipi.ipi, mapped.ctx.regime));
+    taxes.push(toTaxItem("IPI", collect(ipi.ipi), mapped.ctx.regime));
     const reform = await resolveIbsCbs(mapped.ctx, this.ruleSource);
-    taxes.push(toTaxItem("CBS", reform.cbs, mapped.ctx.regime));
-    taxes.push(toTaxItem("IBS", reform.ibs, mapped.ctx.regime));
+    taxes.push(toTaxItem("CBS", collect(reform.cbs), mapped.ctx.regime));
+    taxes.push(toTaxItem("IBS", collect(reform.ibs), mapped.ctx.regime));
     const das = await resolveSimplesDas(mapped.ctx, this.ruleSource);
     if (das.das.outcome.kind === "TAXED") {
-      taxes.push(toTaxItem("DAS", das.das, mapped.ctx.regime));
+      taxes.push(toTaxItem("DAS", collect(das.das), mapped.ctx.regime));
     }
     const iss = await resolveIss(mapped.ctx, this.ruleSource);
-    taxes.push(toTaxItem("ISS", iss.iss, mapped.ctx.regime));
+    taxes.push(toTaxItem("ISS", collect(iss.iss), mapped.ctx.regime));
 
     const cfop = mapped.ctx.cfop
       ? { code: mapped.ctx.cfop, basis: "CFOP informado pelo emissor (trava validada)" }
@@ -188,15 +197,18 @@ export class TaxDecisionsController {
       totals: taxes.reduce<{ tax: string; amountCents: number }[]>((acc, t) =>
         t.amountCents !== undefined ? [...acc, { tax: t.tax, amountCents: t.amountCents }] : acc, []),
       inferences: [...inferences, ...mapped.inferences],
-      warnings: result.icms.warnings,
+      warnings: [...new Set(allDecisions.flatMap((d) => d.warnings))],
       errors: [],
-      ...(req.options?.detailLevel === "FULL_TRACE" ? { trace: result.icms.trace } : {}),
+      ...(req.options?.detailLevel === "FULL_TRACE"
+        ? { trace: allDecisions.flatMap((d) => d.trace.map((s) => ({ tribute: d.tribute, ...s }))) }
+        : {}),
     };
   }
 }
 
 function toTaxItem(tax: string, d: TaxDecision, regime: FiscalContext["regime"]): TaxItem {
   const appliedRules = d.appliedRule ? [`${d.appliedRule.id}@v${d.appliedRule.version}`] : [];
+  const reviewReason = d.appliedRule?.reviewReason;
   const fc = fiscalCodeFor(tax as Parameters<typeof fiscalCodeFor>[0], d.outcome, regime);
   const fiscalCode = fc ? { kind: fc.kind, code: fc.code } : undefined;
   if (d.outcome.kind === "TAXED") {
@@ -208,6 +220,7 @@ function toTaxItem(tax: string, d: TaxDecision, regime: FiscalContext["regime"])
       amountCents: d.outcome.amountCents,
       legalBases: d.outcome.legalBasis ? [legalBasisToString(d.outcome.legalBasis)] : [],
       appliedRules,
+      ...(reviewReason ? { reviewReason } : {}),
       ...(fiscalCode ? { fiscalCode } : {}),
     };
   }
@@ -217,6 +230,7 @@ function toTaxItem(tax: string, d: TaxDecision, regime: FiscalContext["regime"])
       outcome: "NO_RULE_FOUND",
       legalBases: [],
       appliedRules,
+      ...(reviewReason ? { reviewReason } : {}),
       hints: d.outcome.evaluatedRules.map((r) => `${r.ruleId}: ${r.reason}`),
     };
   }
@@ -225,6 +239,7 @@ function toTaxItem(tax: string, d: TaxDecision, regime: FiscalContext["regime"])
     outcome: d.outcome.kind,
     legalBases: [legalBasisToString(d.outcome.legalBasis)],
     appliedRules,
+    ...(reviewReason ? { reviewReason } : {}),
     ...(fiscalCode ? { fiscalCode } : {}),
   };
 }
@@ -256,6 +271,8 @@ export interface TaxItem {
   readonly amountCents?: number;
   readonly legalBases: readonly string[];
   readonly appliedRules: readonly string[];
+  /** Incerteza declarada da regra aplicada — chega ao consumidor (auditoria 2.8). */
+  readonly reviewReason?: string;
   readonly hints?: readonly string[];
 }
 

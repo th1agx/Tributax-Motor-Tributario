@@ -54,7 +54,7 @@ export const ICMS_CASES: readonly IcmsTestCase[] = [
   },
   {
     id: "ICMS-CASE-002",
-    name: "Venda interestadual MG → SP, consumidor final: ICMS 12% + DIFAL 6% (20/80)",
+    name: "MG → SP consumidor final: ICMS 12% + DIFAL base dupla (LC 190/22 art. 13 IX b); SP sem FCP",
     given: makeCtx({
       ...base,
       issuerState: "MG",
@@ -67,17 +67,18 @@ export const ICMS_CASES: readonly IcmsTestCase[] = [
       icmsAmountCents: 12000,
       icmsRateBp: 1200,
       hasDifal: true,
-      difalAmountCents: 6000,
-      difalOriginCents: 1200,
-      difalDestinationCents: 4800,
-      fcpAmountCents: 2000,
+      // base dupla: inter=12000; base_dest=(100000−12000)/0,82=107317;
+      // 18%×107317=19317; DIFAL=19317−12000=7317; split 20/80
+      difalAmountCents: 7317,
+      difalOriginCents: 1463,
+      difalDestinationCents: 5854,
     },
-    legalBasis: "Res. SF 22/89 art. 1º; LC 190/22 (LC 87/96 art. 99 §2º); LC 87/96 art. 82-A",
+    legalBasis: "Res. SF 22/89 art. 1º; LC 190/22 art. 13, IX, b e §6º, II; SP sem FCP geral",
     effectiveFrom: "2026-01-01",
   },
   {
     id: "ICMS-CASE-003",
-    name: "Venda interestadual PA → SP (origem N/NE/CO/ES), consumidor final: ICMS 7% + DIFAL 11%",
+    name: "PA → SP (origem favorecida) consumidor final: ICMS 7% + DIFAL base dupla; SP sem FCP",
     given: makeCtx({
       ...base,
       issuerState: "PA",
@@ -90,12 +91,12 @@ export const ICMS_CASES: readonly IcmsTestCase[] = [
       icmsAmountCents: 7000,
       icmsRateBp: 700,
       hasDifal: true,
-      difalAmountCents: 11000,
-      difalOriginCents: 2200,
-      difalDestinationCents: 8800,
-      fcpAmountCents: 2000,
+      // inter=7000; base_dest=(100000−7000)/0,82=113414; 18%=20414; DIFAL=13414
+      difalAmountCents: 13414,
+      difalOriginCents: 2682,
+      difalDestinationCents: 10732,
     },
-    legalBasis: "Res. SF 22/89 art. 2º; LC 190/22; LC 87/96 art. 82-A",
+    legalBasis: "Res. SF 22/89 art. 2º; LC 190/22 art. 13, IX, b; SP sem FCP geral",
     effectiveFrom: "2026-01-01",
   },
   {
@@ -130,7 +131,7 @@ export const ICMS_CASES: readonly IcmsTestCase[] = [
   },
   {
     id: "ICMS-CASE-006",
-    name: "MG → PA consumidor final: ICMS 12%, DIFAL 5% (20/80), FCP-PA 2%",
+    name: "MG → PA consumidor final: ICMS 12%, DIFAL base dupla (interna PA 19%), FCP-PA 2%",
     given: makeCtx({
       ...base,
       issuerState: "MG",
@@ -142,12 +143,13 @@ export const ICMS_CASES: readonly IcmsTestCase[] = [
     expect: {
       icmsAmountCents: 12000,
       hasDifal: true,
-      difalAmountCents: 5000,
-      difalOriginCents: 1000,
-      difalDestinationCents: 4000,
+      // inter=12000; base_dest=(100000−12000)/(1−0,19)=108641; 19%=20641; DIFAL=8641
+      difalAmountCents: 8641,
+      difalOriginCents: 1728,
+      difalDestinationCents: 6913,
       fcpAmountCents: 2000,
     },
-    legalBasis: "Res. SF 22/89 art. 1º; LC 190/22; LC 87/96 art. 82-A (FCP-PA NEEDS_REVIEW)",
+    legalBasis: "Res. SF 22/89 art. 1º; LC 190/22 art. 13, IX, b; LC 87/96 art. 82-A (FCP-PA NEEDS_REVIEW)",
     effectiveFrom: "2026-01-01",
   },
   {

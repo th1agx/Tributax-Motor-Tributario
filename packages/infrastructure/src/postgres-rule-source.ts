@@ -42,14 +42,23 @@ export class PostgresRuleSource {
   }
 }
 
-/** Insere o catálogo-padrão gerado pelo domínio (idempotente por id+versão). */
-export async function seedRuleCatalog(databaseUrl: string): Promise<number> {
+/**
+ * Insere o catálogo-padrão gerado pelo domínio (idempotente por id+versão).
+ * HONESTO (auditoria 2.9): reporta quantas linhas o banco ACEITOU de fato;
+ * se alguma regra do catálogo não estiver persistida após o seed, lança —
+ * o caminho "de produção" nunca calcula com menos regras que a memória
+ * sem ninguém saber.
+ */
+export async function seedRuleCatalog(
+  databaseUrl: string,
+  opts: { failOnDivergence?: boolean } = {},
+): Promise<number> {
   const { icmsRuleCatalog } = await import("@tributax/domain");
   const pool = new pg.Pool({ connectionString: databaseUrl });
   const db = drizzle(pool);
   const catalog = [...icmsRuleCatalog(), ...pisCofinsRuleCatalog(), ...issRetentionRuleCatalog(), ...ipiRuleCatalog(), ...ibsCbsRuleCatalog(), ...issRuleCatalog()];
 
-  await db
+  const inserted = await db
     .insert(taxRules)
     .values(
       catalog.map((r) => ({
@@ -69,10 +78,22 @@ export async function seedRuleCatalog(databaseUrl: string): Promise<number> {
         ...(r.reviewReason ? { reviewReason: r.reviewReason } : {}),
       })),
     )
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ id: taxRules.id });
 
+  // verificação pós-seed: tudo do catálogo está no banco?
+  const rows = await db.select({ id: taxRules.id, version: taxRules.version }).from(taxRules);
+  const persisted = new Set(rows.map((r) => `${r.id}@${r.version}`));
+  const missing = catalog.filter((r) => !persisted.has(`${r.id}@${r.version}`));
   await pool.end();
-  return catalog.length;
+
+  if (missing.length > 0) {
+    const detail = missing.map((r) => `${r.id}@${r.version} (${r.tribute})`).join(", ");
+    const msg = `seed divergente: ${missing.length}/${catalog.length} regras do catálogo NÃO estão no banco — ${detail}`;
+    if (opts.failOnDivergence !== false) throw new Error(msg);
+    console.warn(`[seed] ${msg}`);
+  }
+  return inserted.length;
 }
 
 function isoDate(d: Date): string {

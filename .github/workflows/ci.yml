@@ -58,16 +58,13 @@ jobs:
         working-directory: packages/infrastructure
         run: npx drizzle-kit migrate
 
-      - name: Apply custom constraints (vigência disjunta + pgvector)
-        run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-client
-          psql "$DATABASE_URL" -f packages/infrastructure/drizzle/custom/01_no_overlap.sql
-          psql "$DATABASE_URL" -f packages/infrastructure/drizzle/custom/02_pgvector.sql
+      - name: Apply custom constraints (v2: vigência disjunta por regra + pgvector + tenants)
+        run: node scripts/migrate-custom.mjs
 
       - name: Build domain (dist para o seed)
         run: npm run build --workspace=@tributax/domain
 
-      - name: Seed rule catalog
+      - name: Seed rule catalog (honesto: falha se o banco perder regras)
         working-directory: packages/infrastructure
         run: npx tsx src/seed.ts
 

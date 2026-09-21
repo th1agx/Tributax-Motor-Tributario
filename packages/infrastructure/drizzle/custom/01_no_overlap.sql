@@ -1,16 +1,8 @@
--- Constraints de vigência disjunta (ADR-003).
--- Aplicar após as migrations geradas pelo drizzle-kit:
---   psql "$DATABASE_URL" -f drizzle/custom/01_no_overlap.sql
+-- DEPRECATED (auditoria 2.9): a constraint original (tributo+jurisdição+
+-- vigência disjuntas) proibia a sobreposição que a resolução por
+-- especificidade (ADR-005) resolve — o seed perdia regras em silêncio.
+-- Substituída por 04_no_overlap_v2.sql (vigências disjuntas POR REGRA).
+-- Este arquivo permanece apenas para compatibilidade de rollforward;
+-- não cria nada.
 
-CREATE EXTENSION IF NOT EXISTS btree_gist;
-
--- Regras ATIVAS do mesmo tributo, na mesma jurisdição, não podem ter
--- vigências sobrepostas — invariante do catálogo garantida no dado.
-ALTER TABLE tax_rules
-  ADD CONSTRAINT tax_rules_no_overlap
-  EXCLUDE USING gist (
-    tribute WITH =,
-    jurisdiction_scope WITH =,
-    COALESCE(jurisdiction_code, '') WITH =,
-    validity WITH &&
-  ) WHERE (status = 'ACTIVE');
+SELECT 1;

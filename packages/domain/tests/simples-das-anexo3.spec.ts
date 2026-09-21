@@ -40,7 +40,8 @@ describe("DAS Anexo III — serviços com alíquota efetiva (LC 123/06)", () => 
     const d = calculateSimplesDas(makeCtx({ regime: "SIMPLES_NACIONAL", rbt12Cents: 40_000_000 }));
     if (d.das.outcome.kind === "TAXED") {
       expect(d.das.appliedRule?.id).toContain("ANEXO1");
-      expect(d.das.outcome.rateBp).toBe(950);
+      // efetiva (fórmula da lei) = 950 − round(1.386.000×10000/40.000.000) = 950 − 347
+      expect(d.das.outcome.rateBp).toBe(603);
     }
   });
 

@@ -23,6 +23,12 @@ export type RuleEffect =
   | { readonly type: "applySt"; readonly mvaBp: number; readonly rateBp: number }
   /** Simples Anexos III/V (LC 123/06): alíquota EFETIVA = (RBT12 × nominal − dedução) / RBT12. */
   | { readonly type: "applyDasAnexo"; readonly nominalBp: number; readonly deductionCents: number }
+  /**
+   * DIFAL com base dupla (LC 190/22, art. 13, IX, "b" e §6º, II):
+   * base no destino = (valor − ICMS interestadual) / (1 − alíquota interna);
+   * DIFAL = base_destino × alíq. interna − ICMS interestadual.
+   */
+  | { readonly type: "applyDifal"; readonly internalRateBp: number; readonly interstateRateBp: number }
   | { readonly type: "reduceBasis"; readonly pctBp: number }
   | { readonly type: "exempt" }
   | { readonly type: "nonTaxable" }

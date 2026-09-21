@@ -11,6 +11,10 @@ import { DocsController } from "../src/docs/docs.controller.js";
 
 describe("API e2e — /v1/tax-decisions", () => {
   let app: INestApplication;
+  // /v1/rules agora exige admin key (auditoria 3.7)
+  const ADMIN_KEY = "e2e-admin-key";
+  process.env.TRIBUTAX_ADMIN_KEY = ADMIN_KEY;
+  const adminSet = { "x-admin-key": ADMIN_KEY };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -18,14 +22,27 @@ describe("API e2e — /v1/tax-decisions", () => {
     }).compile();
     app = moduleRef.createNestApplication(new ExpressAdapter());
     await app.init();
+    // emissor padrão dos testes (agora OBRIGATÓRIO no payload)
+    await request(app.getHttpServer())
+      .post("/v1/parties")
+      .send({
+        taxId: "11111111000111",
+        legalName: "Emissor Padrao MG",
+        type: "COMPANY",
+        establishments: [{ address: { state: "MG" }, taxRegimes: [{ regime: "NORMAL", validFrom: "2020-01-01" }] }],
+      })
+      .expect(201);
   });
 
-  it("venda interestadual MG → SP consumidor final: 12% + DIFAL 20/80 + FCP 2%", async () => {
+  const EMITTER = { context: { issuer: { partyRef: "11111111000111" } } };
+
+  it("venda interestadual MG → SP consumidor final: 12% + DIFAL base dupla; SP sem FCP", async () => {
     const res = await request(app.getHttpServer())
       .post("/v1/tax-decisions")
       .send({
         correlationId: "e2e-1",
-        context: { recipient: { address: { state: "SP" } } },
+        ...EMITTER,
+        context: { ...EMITTER.context, recipient: { address: { state: "SP" } } },
         items: [{ description: "Produto", quantity: 1, unitPrice: { amount: 100000 } }],
       })
       .expect(201);
@@ -39,8 +56,9 @@ describe("API e2e — /v1/tax-decisions", () => {
 
     const taxes = Object.fromEntries(body.items[0].taxes.map((t: { tax: string; amountCents?: number }) => [t.tax, t.amountCents]));
     expect(taxes.ICMS).toBe(12000);
-    expect(taxes.DIFAL).toBe(6000);
-    expect(taxes.FCP).toBe(2000);
+    // DIFAL base dupla (LC 190/22 art. 13 IX b): 7317 sobre R$ 1.000
+    expect(taxes.DIFAL).toBe(7317);
+    expect(taxes.FCP).toBeUndefined(); // SP não cobra FCP geral (correção auditoria)
     expect(taxes.PIS).toBe(1650);
     expect(taxes.COFINS).toBe(7600);
     // reforma tributária (LC 214/25): alíquotas-teste 2026 sobre a base
@@ -48,7 +66,14 @@ describe("API e2e — /v1/tax-decisions", () => {
     expect(taxes.IBS).toBe(100);
 
     expect(body.inferences.length).toBeGreaterThan(0);
-    expect(body.totals).toHaveLength(7);
+    expect(body.totals).toHaveLength(6);
+  });
+
+  it("sem emissor → 400 explícito (fim do default MG, auditoria 2.7)", async () => {
+    await request(app.getHttpServer())
+      .post("/v1/tax-simulations")
+      .send({ correlationId: "e2e-no-issuer", items: [{ unitPrice: { amount: 50000 } }] })
+      .expect(400);
   });
 
   it("payload mínimo sem endereço: operação interna MG 18%, sem DIFAL", async () => {
@@ -56,6 +81,7 @@ describe("API e2e — /v1/tax-decisions", () => {
       .post("/v1/tax-simulations")
       .send({
         correlationId: "e2e-2",
+        ...EMITTER,
         items: [{ description: "Produto", unitPrice: { amount: 50000 } }],
       })
       .expect(201);
@@ -63,20 +89,22 @@ describe("API e2e — /v1/tax-decisions", () => {
     const taxes = Object.fromEntries(res.body.items[0].taxes.map((t: { tax: string; amountCents?: number }) => [t.tax, t.amountCents]));
     expect(taxes.ICMS).toBe(9000); // 18% de R$ 500
     expect(taxes.DIFAL).toBeUndefined();
-    expect(res.body.derivedTier).toBe("MINIMAL");
   });
 
-  it("detailLevel FULL_TRACE inclui o trace da decisão", async () => {
+  it("detailLevel FULL_TRACE inclui o trace da decisão (agora de TODOS os tributos)", async () => {
     const res = await request(app.getHttpServer())
       .post("/v1/tax-simulations")
       .send({
         correlationId: "e2e-3",
+        ...EMITTER,
         options: { detailLevel: "FULL_TRACE" },
         items: [{ description: "Produto", unitPrice: { amount: 100000 } }],
       })
       .expect(201);
     expect(Array.isArray(res.body.trace)).toBe(true);
     expect(res.body.trace.map((s: { phase: string }) => s.phase)).toContain("MATCHING");
+    // tributos múltiplos presentes no trace agregado
+    expect(res.body.trace.some((s: { tribute?: string }) => s.tribute === "PIS")).toBe(true);
   });
 
   it("sem correlationId → erro de validação", async () => {
@@ -89,7 +117,7 @@ describe("API e2e — /v1/tax-decisions", () => {
   it("decisão persistida é recuperável por id; id inexistente → 400", async () => {
     const created = await request(app.getHttpServer())
       .post("/v1/tax-decisions")
-      .send({ correlationId: "e2e-4", items: [{ unitPrice: { amount: 100000 } }] })
+      .send({ correlationId: "e2e-4", ...EMITTER, items: [{ unitPrice: { amount: 100000 } }] })
       .expect(201);
 
     const found = await request(app.getHttpServer())
@@ -187,6 +215,7 @@ describe("API e2e — /v1/tax-decisions", () => {
         validFrom: "2026-01-01",
         legalBasis: { documentType: "REGULAMENTO_ESTADUAL", number: "RICMS", year: "SE" },
       })
+      .set(adminSet)
       .expect(201);
     const ruleId = created.body.rule.id;
 
@@ -194,6 +223,7 @@ describe("API e2e — /v1/tax-decisions", () => {
       await request(app.getHttpServer())
         .post(`/v1/rules/${ruleId}/transitions`)
         .send({ version: 1, to, actor: "HUMAN" })
+        .set(adminSet)
         .expect(201);
     }
 
@@ -221,9 +251,10 @@ describe("API e2e — /v1/tax-decisions", () => {
     expect(icms.legalBases.join(" ")).toMatch(/SE/);
   });
 
-  it("condição inválida em /v1/rules → 400 CONDITION_INVALID", async () => {
+  it("condição inválida em /v1/rules → 400 CONDITION_INVALID; sem admin key → 403/401", async () => {
     await request(app.getHttpServer())
       .post("/v1/rules")
+      .set(adminSet)
       .send({
         tribute: "ICMS",
         name: "quebrada",
@@ -233,6 +264,12 @@ describe("API e2e — /v1/tax-decisions", () => {
         validFrom: "2026-01-01",
       })
       .expect(400);
+
+    // sem admin key o catálogo global é inacessível (auditoria 3.7)
+    await request(app.getHttpServer())
+      .post("/v1/rules")
+      .send({ tribute: "ICMS", name: "x", jurisdiction: { scope: "FEDERAL" }, condition: { kind: "predicate", predicate: "isInternal" }, effects: [{ type: "applyRate", rateBp: 100 }], validFrom: "2026-01-01" })
+      .expect(401);
   });
 
   it("/openapi.yaml serve o contrato; /docs serve o site; /docs/api serve o Swagger UI", async () => {

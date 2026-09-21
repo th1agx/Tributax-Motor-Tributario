@@ -1,4 +1,5 @@
-import { BadRequestException, Body, Controller, Get, Inject, Module, Optional, Param, Post } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Inject, Module, Optional, Param, Post, UseGuards } from "@nestjs/common";
+import { AdminGuard } from "../auth/admin.guard.js";
 import { compile } from "@tributax/domain";
 import { icmsRuleCatalog, pisCofinsRuleCatalog, issRetentionRuleCatalog, ipiRuleCatalog, ibsCbsRuleCatalog, issRuleCatalog } from "@tributax/domain";
 import type { FiscalContext, SpecJson, TaxRule } from "@tributax/domain";
@@ -136,6 +137,14 @@ export function validateDraft(input: RuleDraftInput): void {
   }
 }
 
+/**
+ * Catálogo de regras é GLOBAL (compartilhado por todos os tenants):
+ * qualquer operação de authoring exige a admin key, NÃO a key de tenant
+ * (auditoria 3.7). A IA usa a admin key para propor DRAFTs; a aprovação
+ * continua exigindo actor HUMAN — mas agora a porta é guardada por guard,
+ * não por campo do body confiado ao chamador.
+ */
+@UseGuards(AdminGuard)
 @Controller("/v1/rules")
 export class RulesAdminController {
   private readonly catalog: RuleCatalogStore;

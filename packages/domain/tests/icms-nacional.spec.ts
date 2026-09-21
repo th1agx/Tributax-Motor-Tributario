@@ -47,8 +47,8 @@ describe("ICMS — cobertura nacional 27/27", () => {
     if (after.icms.outcome.kind === "TAXED") expect(after.icms.outcome.rateBp).toBe(2050);
   });
 
-  it("casos conhecidos: MA 23% (maior), ES 17% (menor), RO 17,5% (fracionária)", () => {
-    for (const [uf, rateBp] of [["MA", 2300], ["ES", 1700], ["RO", 1750]] as const) {
+  it("casos conhecidos: MA 23% (maior), ES 17% (menor), RO 19,5% (corrigida 2026-09)", () => {
+    for (const [uf, rateBp] of [["MA", 2300], ["ES", 1700], ["RO", 1950]] as const) {
       const d = calculateIcmsWith(makeCtx({ issuerState: uf, recipientState: uf }), icmsRuleCatalog());
       if (d.icms.outcome.kind === "TAXED") expect(d.icms.outcome.rateBp, uf).toBe(rateBp);
     }

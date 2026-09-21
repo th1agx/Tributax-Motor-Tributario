@@ -37,7 +37,9 @@ const INTERNAL_RATES: Record<Uf, InternalRate> = {
   AL: { rateBp: 2050, validFrom: "2026-04-01", note: "20,5% vigente desde 01/04/2026 (antes 19%) (NEEDS_REVIEW)" },
   AM: { rateBp: 2000 },
   AP: { rateBp: 1800 },
-  BA: { rateBp: 1800 },
+  // BA/PA/PI/PR/RN/RO/RR/RS/TO corrigidas contra tabela revisada 18/09/2026
+  // (cruzamento de fontes públicas — FocusNFe/Conta Azul/CDM conferidas).
+  BA: { rateBp: 2050 },
   CE: { rateBp: 2000 },
   DF: { rateBp: 2000 },
   ES: { rateBp: 1700 },
@@ -46,20 +48,20 @@ const INTERNAL_RATES: Record<Uf, InternalRate> = {
   MG: { rateBp: 1800 },
   MS: { rateBp: 1700 },
   MT: { rateBp: 1700 },
-  PA: { rateBp: 1700 },
+  PA: { rateBp: 1900 },
   PB: { rateBp: 2000 },
   PE: { rateBp: 2050, note: "20,5% — conferir Lei PE que fixou o adicional (NEEDS_REVIEW)" },
-  PI: { rateBp: 1900 },
-  PR: { rateBp: 1800 },
+  PI: { rateBp: 2250 },
+  PR: { rateBp: 1950 },
   RJ: { rateBp: 2000 },
-  RN: { rateBp: 1900 },
-  RO: { rateBp: 1750, note: "17,5% — única fracionária do país (NEEDS_REVIEW)" },
-  RR: { rateBp: 1700 },
-  RS: { rateBp: 1800 },
+  RN: { rateBp: 2000 },
+  RO: { rateBp: 1950, note: "subiu de 17,5% para 19,5% — conferir RICMS RO vigente (NEEDS_REVIEW)" },
+  RR: { rateBp: 2000 },
+  RS: { rateBp: 1700 },
   SC: { rateBp: 1700 },
   SP: { rateBp: 1800 },
   SE: { rateBp: 1900 },
-  TO: { rateBp: 1800 },
+  TO: { rateBp: 2000 },
 };
 
 /**
@@ -68,15 +70,16 @@ const INTERNAL_RATES: Record<Uf, InternalRate> = {
  * campo SEPARADO do DIFAL (vFCPDif ≠ vICMSDif), 100% ao estado destino.
  *
  * COBERTURA (fontes públicas 2026 — FocusNFe, Mastery B2B, Soften):
- * - 2% fixo nas UFs abaixo (21 + DF no total);
+ * - 2% fixo nas UFs abaixo (21 + DF + RJ no total);
  * - FORA por ser por produto/NCM (modelagem futura): AL (1–2% por NCM),
  *   GO (até 2%), MT (até 2%), AM (2%/1,5% por NCM em parte das fontes);
- * - MG e SC NÃO aderiram ao FCP (0%) — sem regra, correto.
+ * - MG, SC e SP NÃO cobram FCP geral (0%) — sem regra, correto
+ *   (SP corrigido: estava 2% e a tabela revisada traz 0).
  */
 const FCP_RATES: Partial<Record<Uf, number>> = {
   AC: 200, AP: 200, BA: 200, CE: 200, DF: 200, ES: 200, MA: 200, PA: 200,
   PB: 200, PE: 200, PI: 200, PR: 200, RN: 200, RO: 200, RR: 200, RS: 200,
-  SE: 200, MS: 200, SP: 200, TO: 200, AM: 200,
+  SE: 200, MS: 200, TO: 200, AM: 200, RJ: 200,
 };
 
 /** Res. SF 22/89 art. 2º: origens favorecidas (7% → S/SE exceto ES). */
@@ -216,7 +219,7 @@ function difalRules(): TaxRule[] {
       name: `DIFAL destino ${uf} (alíquota geral)`,
       jurisdiction: { scope: "STATE", code: uf },
       condition: andOf(...common),
-      effects: [{ type: "applyRate", rateBp: internalBp - 1200 }],
+      effects: [{ type: "applyDifal", internalRateBp: internalBp, interstateRateBp: 1200 }],
       priority: 0,
       validity,
       status: "ACTIVE",
@@ -225,7 +228,7 @@ function difalRules(): TaxRule[] {
         documentType: "LEI_COMPLEMENTAR",
         number: "190",
         year: "2022",
-        provision: "art. 3º (incluído na LC 87/96, art. 99, §2º)",
+        provision: "art. 3º (incluído na LC 87/96, art. 99, §2º); base dupla: art. 13, IX, \"b\" e §6º, II",
       },
       reviewReason: `split 20/80 de ${uf} a confirmar (LC 190/22 e Conv. ICMS correspondente) (NEEDS_REVIEW)`,
     });
@@ -240,7 +243,7 @@ function difalRules(): TaxRule[] {
           ...common,
           orOf(...FAVOURED_ORIGINS.map((o) => pred("issuerStateIs", { uf: o }))),
         ),
-        effects: [{ type: "applyRate", rateBp: internalBp - 700 }],
+        effects: [{ type: "applyDifal", internalRateBp: internalBp, interstateRateBp: 700 }],
         priority: 0,
         validity,
         status: "ACTIVE",

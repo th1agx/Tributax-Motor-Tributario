@@ -55,9 +55,9 @@ describe("fiscalCodeFor — CST/CSOSN", () => {
     }
   });
 
-  it("IPI no Simples não gera CST; no normal, tributado → 99", () => {
+  it("IPI no Simples não gera CST; no normal, tributado → 50 (correção auditoria: 40/41 são de ICMS)", () => {
     expect(fiscalCodeFor("IPI", taxed, "MEI")).toBeUndefined();
-    expect(fiscalCodeFor("IPI", taxed, "NORMAL")).toEqual({ kind: "CST", code: "99" });
+    expect(fiscalCodeFor("IPI", taxed, "NORMAL")).toEqual({ kind: "CST", code: "50" });
   });
 
   it("NO_RULE_FOUND nunca gera código; ISS/DIFAL/FCP/retenções não têm CST próprio", () => {

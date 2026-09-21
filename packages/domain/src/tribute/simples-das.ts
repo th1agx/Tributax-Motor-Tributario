@@ -6,8 +6,10 @@ import { DateRange } from "../shared/date-range.js";
 /**
  * Módulo DAS — Simples Nacional (LC 123/2006, Anexo I pós-unificação 2023).
  *
- * - Faixas por RBT12 (receita bruta 12 meses); alíquota NOMINAL aplicada à
- *   receita da operação (Anexo I não tem dedução, diferente do III/V).
+ * - Faixas por RBT12 (receita bruta 12 meses); alíquota EFETIVA =
+ *   (RBT12 × nominal − dedução) / RBT12 aplicada à receita da operação.
+ *   O Anexo I TEM coluna "valor a deduzir" (correção 2026-09 — a afirmação
+ *   anterior de que não tinha estava errada e produziu erro de até +91%).
  * - Exige rbt12Cents no contexto: sem RBT12, nenhuma faixa casa e o motor
  *   responde NO_RULE_FOUND (honesto — nunca assume a 1ª faixa por conta própria).
  * - MEI NÃO entra: DAS-MEI é valor fixo mensal (percentual do salário mínimo
@@ -18,18 +20,21 @@ import { DateRange } from "../shared/date-range.js";
 
 const VALID_FROM_2026 = () => DateRange.from(new Date("2026-01-01T00:00:00Z"));
 
-/** [RBT12 mínimo (centavos), máximo exclusive, alíquota bp] — Anexo I, LC 123/06. */
-const FAIXAS: readonly (readonly [number, number, number])[] = [
-  [0, 18_000_000, 400],        // até 180k: 4%
-  [18_000_000, 36_000_000, 730],   // 180–360k: 7,3%
-  [36_000_000, 54_000_000, 950],   // 360–540k: 9,5%
-  [54_000_000, 72_000_000, 1070],  // 540–720k: 10,7%
-  [72_000_000, 180_000_000, 1430], // 720k–1,8M: 14,3%
-  [180_000_000, 360_000_000, 1900],// 1,8–3,6M: 19%
+/**
+ * [RBT12 mínimo (centavos), máximo exclusive, alíquota nominal bp, dedução cents]
+ * — Anexo I da LC 123/2006 (redação da LC 155/2016, vigência 01/01/2018),
+ * conferido contra o texto no Planalto. TODAS as faixas têm "valor a deduzir".
+ */
+const ANEXO_I: readonly (readonly [number, number, number, number])[] = [
+  [0, 18_000_000, 400, 0],            // até 180k: 4,00% / –
+  [18_000_000, 36_000_000, 730, 594_000],   // 180–360k: 7,30% / 5.940
+  [36_000_000, 72_000_000, 950, 1_386_000], // 360–720k: 9,50% / 13.860
+  [72_000_000, 180_000_000, 1070, 2_250_000], // 720k–1,8M: 10,70% / 22.500
+  [180_000_000, 360_000_000, 1430, 8_730_000], // 1,8–3,6M: 14,30% / 87.300
+  [360_000_000, 480_000_000, 1900, 37_800_000], // 3,6–4,8M: 19,00% / 378.000
 ];
-
-/** 7ª faixa (3,6–4,8M): 22,5% pós-reforma 2023 — com revisão declarada. */
-const SETIMA: readonly (readonly [number, number, number])[] = [[360_000_000, 480_000_000, 2250]];
+// Nota: NÃO existe 7ª faixa no Anexo I — a faixa "22,5%" foi removida
+// (era invenção; os sublimites de ICMS/ISS são outro instituto).
 
 /**
  * Anexo III (serviços, LC 123/06): alíquota NOMINAL + DEDUÇÃO por faixa —
@@ -39,17 +44,43 @@ const SETIMA: readonly (readonly [number, number, number])[] = [[360_000_000, 48
  */
 const ANEXO_III: readonly (readonly [number, number, number, number])[] = [
   // [RBT12 min cents, max exclusive, nominal bp, dedução cents]
+  // Limites de faixa IGUAIS aos do Anexo I (LC 123/06, LC 155/16).
   [0, 18_000_000, 600, 0],          // 6%
-  [18_000_000, 36_000_000, 1120, 936_000],   // 11,2% − 9.360
-  [36_000_000, 54_000_000, 1350, 1_764_000], // 13,5% − 17.640
-  [54_000_000, 72_000_000, 1600, 3_564_000], // 16% − 35.640
-  [72_000_000, 180_000_000, 2100, 12_564_000], // 21% − 125.640
-  [180_000_000, 360_000_000, 3300, 64_800_000], // 33% − 648.000
+  [18_000_000, 36_000_000, 1120, 936_000],   // 11,2% – 9.360
+  [36_000_000, 72_000_000, 1350, 1_764_000], // 13,5% – 17.640
+  [72_000_000, 180_000_000, 1600, 3_564_000], // 16% – 35.640
+  [180_000_000, 360_000_000, 2100, 12_564_000], // 21% – 125.640
+  [360_000_000, 480_000_000, 3300, 64_800_000], // 33% – 648.000
 ];
 
 export function simplesDasRuleCatalog(): TaxRule[] {
-  const rules = FAIXAS.map((f) => faixaRule(f)).flat();
-  return [...rules, ...SETIMA.map((f) => faixaRule(f, true)), ...anexoIII2Rules()];
+  return [...anexoIRules(), ...anexoIII2Rules()];
+}
+
+function anexoIRules(): TaxRule[] {
+  return ANEXO_I.map(([min, max, nominalBp, ded], i) => ({
+    id: `DAS-ANEXO1-F${i + 1}-${nominalBp}`,
+    version: 1,
+    tribute: "DAS",
+    name: `DAS Simples Anexo I — ${nominalBp / 100}% nominal (faixa ${i + 1})`,
+    jurisdiction: { scope: "FEDERAL" },
+    condition: {
+      kind: "and",
+      children: [
+        { kind: "predicate", predicate: "regimeIs", args: { regime: "SIMPLES_NACIONAL" } },
+        ...(min > 0
+          ? ([{ kind: "predicate", predicate: "rbt12AtLeast", args: { cents: min } }] satisfies SpecJson[])
+          : []),
+        { kind: "predicate", predicate: "rbt12Below", args: { cents: max } },
+      ],
+    } satisfies SpecJson,
+    effects: [{ type: "applyDasAnexo", nominalBp, deductionCents: ded }],
+    priority: 0,
+    validity: VALID_FROM_2026(),
+    status: "ACTIVE",
+    origin: "LEGISLATION",
+    legalBasis: { documentType: "LEI_COMPLEMENTAR", number: "123", year: "2006", provision: `Anexo I, faixa ${i + 1} (redação LC 155/2016)` },
+  }));
 }
 
 function anexoIII2Rules(): TaxRule[] {
@@ -79,34 +110,6 @@ function anexoIII2Rules(): TaxRule[] {
     legalBasis: { documentType: "LEI_COMPLEMENTAR", number: "123", year: "2006", provision: `Anexo III, faixa ${i + 1}` },
     reviewReason: "Anexo V (industrialização por encomenda) depende do CNAE — não distinguido aqui (NEEDS_REVIEW)",
   }));
-}
-
-function faixaRule([min, max, rateBp]: readonly [number, number, number], review = false): TaxRule {
-  const faixa = FAIXAS.findIndex((f) => f[2] === rateBp) + 1 || (review ? 7 : 0);
-  return {
-    id: `DAS-ANEXO1-F${faixa}-${rateBp}`,
-    version: 1,
-    tribute: "DAS",
-    name: `DAS Simples Anexo I — ${rateBp / 100}% (faixa ${faixa})`,
-    jurisdiction: { scope: "FEDERAL" },
-    condition: {
-      kind: "and",
-      children: [
-        { kind: "predicate", predicate: "regimeIs", args: { regime: "SIMPLES_NACIONAL" } },
-        ...(min > 0
-          ? ([{ kind: "predicate", predicate: "rbt12AtLeast", args: { cents: min } }] satisfies SpecJson[])
-          : []),
-        { kind: "predicate", predicate: "rbt12Below", args: { cents: max } },
-      ],
-    } satisfies SpecJson,
-    effects: [{ type: "applyRate", rateBp }],
-    priority: 0,
-    validity: VALID_FROM_2026(),
-    status: "ACTIVE",
-    origin: "LEGISLATION",
-    legalBasis: { documentType: "LEI_COMPLEMENTAR", number: "123", year: "2006", provision: `Anexo I, faixa ${faixa}` },
-    ...(review ? { reviewReason: "7ª faixa (22,5%) pós-reforma 2023 — conferir vigência e sublimite (NEEDS_REVIEW)" } : {}),
-  };
 }
 
 export interface SimplesDasDecision {

@@ -29,12 +29,22 @@ describe("ApiKeyGuard + tenants (ADR-009)", () => {
     resetTenantStore();
   });
 
-  it("sem TRIBUTAX_API_KEYS configurada, modo dev aberto", async () => {
+  it("sem TRIBUTAX_API_KEYS: FAIL-CLOSED (503) salvo opt-in explícito TRIBUTAX_DEV_OPEN_AUTH=1", async () => {
     delete process.env.TRIBUTAX_API_KEYS;
     const guard = new ApiKeyGuard(reflectorWith(false));
     const req: RequestWithTenant = { headers: {} };
-    expect(await guard.canActivate(ctx(req))).toBe(true);
-    expect(req.tributaxTenant).toBeUndefined();
+
+    // sem opt-in: recusa — nunca abre por acidente (auditoria §4)
+    await expect(guard.canActivate(ctx(req))).rejects.toMatchObject({ status: 503 });
+
+    // com opt-in explícito: dev aberto documentado
+    process.env.TRIBUTAX_DEV_OPEN_AUTH = "1";
+    try {
+      expect(await guard.canActivate(ctx(req))).toBe(true);
+      expect(req.tributaxTenant).toBeUndefined();
+    } finally {
+      delete process.env.TRIBUTAX_DEV_OPEN_AUTH;
+    }
   });
 
   it("com keys configuradas, exige x-api-key válida e anexa o tenant", async () => {
