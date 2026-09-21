@@ -50,14 +50,17 @@ jobs:
             --since 8 --out "watch-report-${{ matrix.tribute }}${{ matrix.uf && format('-{0}', matrix.uf) || '' }}.json"
 
       - name: Apply to API (optional — creates DRAFTs only)
-        if: ${{ secrets.TRIBUTAX_API_URL != '' && secrets.TRIBUTAX_ADMIN_KEY != '' }}
         working-directory: packages/collector
         env:
-          TRIBUTAX_API_URL: ${{ secrets.TRIBUTAX_API_URL }}
           # /v1/rules é admin-only (auditoria 3.3/3.7): sem a key o agente
           # recebia 401 silencioso nas duas pontas
+          TRIBUTAX_API_URL: ${{ secrets.TRIBUTAX_API_URL }}
           TRIBUTAX_ADMIN_KEY: ${{ secrets.TRIBUTAX_ADMIN_KEY }}
         run: |
+          if [ -z "$TRIBUTAX_API_URL" ] || [ -z "$TRIBUTAX_ADMIN_KEY" ]; then
+            echo "TRIBUTAX_API_URL/TRIBUTAX_ADMIN_KEY ausentes — pulando apply (somente report)"
+            exit 0
+          fi
           npx tsx ../api/src/monitoring/watch-agent.cli.ts \
             --api "$TRIBUTAX_API_URL" \
             --report "watch-report-${{ matrix.tribute }}${{ matrix.uf && format('-{0}', matrix.uf) || '' }}.json" \
