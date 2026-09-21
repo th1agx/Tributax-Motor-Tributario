@@ -30,8 +30,10 @@ d("PostgresRuleSource — catálogo persistido alimenta o motor", () => {
 
     const decision = calculateIcmsWith(ctx, fromDb);
     expect(decision.icms.outcome).toMatchObject({ kind: "TAXED", rateBp: 1200, amountCents: 12000 });
-    expect(decision.difal?.outcome).toMatchObject({ amountCents: 6000 });
-    expect(decision.fcp?.outcome).toMatchObject({ amountCents: 2000 });
+    // DIFAL base dupla (LC 190/22 art. 13 IX b): 7317 sobre R$ 1.000
+    expect(decision.difal?.outcome).toMatchObject({ amountCents: 7317 });
+    // SP não cobra FCP geral (correção auditoria) — ausência, não valor
+    expect(decision.fcp).toBeUndefined();
   });
 
   it("asOfDate fora da vigência não retorna regras (viagem no tempo)", async () => {

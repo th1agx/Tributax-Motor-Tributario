@@ -1,9 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { PostgresNormStore } from "../src/postgres-norm-store.js";
-import { chunkNorm } from "@tributax/collector";
+import { PostgresNormStore, type LegalNormDocument } from "../src/postgres-norm-store.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+/** Chunk local (mesma semântica do chunkNorm do collector, sem dependência). */
+function chunksOf(norm: LegalNormDocument): { id: string; normId: string; url: string; publishedAt: string; text: string }[] {
+  const sentences = norm.text.split(/(?<=\.)\s+/);
+  return sentences.map((text, i) => ({
+    id: `${norm.id}#c${i}`,
+    normId: norm.id,
+    url: norm.url,
+    publishedAt: norm.publishedAt,
+    text,
+  }));
+}
 
 /**
  * Integração com Postgres+pgvector: exige migration custom 02_pgvector.sql
@@ -42,7 +53,7 @@ d("PostgresNormStore — evidência e chunks vetoriais (ADR-013)", () => {
     expect(await store.saveNorm(norm)).toBe(false); // re-coleta é no-op
 
     const embedding = Array.from({ length: 1536 }, (_, i) => (i % 7) / 7);
-    for (const chunk of chunkNorm(norm)) {
+    for (const chunk of chunksOf(norm)) {
       await store.saveChunk({ ...chunk, embedding });
     }
     const recent = await store.recentChunks(500);
