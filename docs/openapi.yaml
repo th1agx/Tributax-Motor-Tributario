@@ -27,15 +27,16 @@ paths:
             schema: { $ref: '#/components/schemas/TaxCalculationRequest' }
             examples:
               minimo-mei:
-                summary: Payload mínimo (MEI)
+                summary: Payload mínimo (MEI — emissor cadastrado é obrigatório)
                 value:
                   correlationId: demo-1
+                  context: { issuer: { partyRef: "12345678901234" } }
                   items: [{ description: "Produto", unitPrice: { amount: 100000 } }]
               intermediario:
-                summary: Com destino (DIFAL/FCP)
+                summary: Com destino (DIFAL)
                 value:
                   correlationId: demo-2
-                  context: { recipient: { address: { state: SP } } }
+                  context: { issuer: { partyRef: "12345678901234" }, recipient: { address: { state: SP } } }
                   items: [{ description: "Produto", unitPrice: { amount: 100000 } }]
       responses:
         '201':
@@ -108,6 +109,7 @@ paths:
     post:
       tags: [regras]
       summary: Propõe nova regra fiscal (nasce DRAFT; IA propõe AI_SUGGESTED)
+      security: [{ AdminKeyAuth: [] }]
       requestBody:
         required: true
         content:
@@ -123,6 +125,7 @@ paths:
     get:
       tags: [regras]
       summary: Lista o catálogo (todos os status)
+      security: [{ AdminKeyAuth: [] }]
       responses:
         '200':
           description: Catálogo
@@ -135,6 +138,7 @@ paths:
     post:
       tags: [regras]
       summary: Transiciona status (DRAFT→REVIEW→APPROVED→ACTIVE; IA nunca aprova)
+      security: [{ AdminKeyAuth: [] }]
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
       requestBody:
@@ -303,9 +307,12 @@ components:
         asOfDate: { type: string, format: date, description: default hoje; permite cálculo retroativo }
         context:
           type: object
+          required: [issuer]
           properties:
             issuer:
               type: object
+              required: [partyRef]
+              description: EMISSOR OBRIGATÓRIO — sem partyRef a API responde 400 (não presume UF/regime).
               properties:
                 partyRef: { type: string, description: id ou CNPJ do emissor cadastrado em /v1/parties }
                 rbt12Cents: { type: integer, description: receita bruta 12m em centavos - determina a faixa do DAS (Simples) }
@@ -372,6 +379,9 @@ components:
             properties:
               amount: { type: integer }
               kind: { type: string, enum: [UNCONDITIONAL, CONDITIONAL] }
+        freight: { type: integer, description: frete por item em centavos — integra base ICMS/ST (LC 87/96 art. 13 §1º I) }
+        insurance: { type: integer, description: seguro por item em centavos }
+        otherCharges: { type: integer, description: despesas acessórias por item em centavos }
     TaxCalculationResponse:
       type: object
       properties:
@@ -392,6 +402,7 @@ components:
             review: { type: string }
         items:
           type: array
+          description: decisão POR ITEM — cada linha com seus tributos, bases e códigos próprios
           items:
             type: object
             properties:
@@ -434,6 +445,7 @@ components:
             code: { type: string, example: "00" }
         legalBases: { type: array, items: { type: string }, example: ["LC 190/2022, art. 3º"] }
         appliedRules: { type: array, items: { type: string }, example: ["DIFAL-SP-GENERAL@v1"] }
+        reviewReason: { type: string, description: incerteza declarada da regra aplicada — o valor ainda não foi conferido contra a fonte primária; trate com cautela }
         hints: { type: array, items: { type: string }, description: diagnóstico quando NO_RULE_FOUND }
     Party:
       type: object

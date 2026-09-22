@@ -72,11 +72,13 @@ describe("ICMS — cobertura nacional 27/27", () => {
     }
   });
 
-  it("UFs estáveis não carregam reviewReason; recentes sim (fila do watch)", () => {
+  it("cobertura 27/27 conferida: nenhuma UF carrega mais NEEDS_REVIEW de alíquota", () => {
     const catalog = icmsRuleCatalog();
     const sp = catalog.find((r) => r.id === "ICMS-INT-SP")!;
     expect(sp.reviewReason).toBeUndefined();
+    // as 5 UFs de mudança recente (AC/AL/MA/PE/RO) foram verificadas em
+    // fontes públicas 2026-09 — saem da fila de revisão
     const ma = catalog.find((r) => r.id === "ICMS-INT-MA")!;
-    expect(ma.reviewReason).toMatch(/NEEDS_REVIEW/);
+    expect(ma.reviewReason ?? "").not.toMatch(/NEEDS_REVIEW/);
   });
 });

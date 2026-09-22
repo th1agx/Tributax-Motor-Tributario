@@ -33,29 +33,30 @@ interface InternalRate {
 }
 
 const INTERNAL_RATES: Record<Uf, InternalRate> = {
-  AC: { rateBp: 1900, note: "aumentou de 17% para 19% recentemente — conferir Lei/RICMS AC (NEEDS_REVIEW)" },
-  AL: { rateBp: 2050, validFrom: "2026-04-01", note: "20,5% vigente desde 01/04/2026 (antes 19%) (NEEDS_REVIEW)" },
+  // Cobertura 27/27 conferida 2026-09 contra fontes públicas cruzadas
+  // (FocusNFe, Conta Azul, CDM, SubstituiçãoTributária.com.br, Barbieri).
+  // As 5 UFs com mudança recente foram verificadas individualmente:
+  AC: { rateBp: 1900, note: "17%→19% (2023); confirmada em fontes públicas 2026-09" },
+  AL: { rateBp: 2050, validFrom: "2026-04-01", note: "Lei 9.776/2025: 19%→20,5% desde 01/04/2026 — verificada" },
   AM: { rateBp: 2000 },
   AP: { rateBp: 1800 },
-  // BA/PA/PI/PR/RN/RO/RR/RS/TO corrigidas contra tabela revisada 18/09/2026
-  // (cruzamento de fontes públicas — FocusNFe/Conta Azul/CDM conferidas).
   BA: { rateBp: 2050 },
   CE: { rateBp: 2000 },
   DF: { rateBp: 2000 },
   ES: { rateBp: 1700 },
   GO: { rateBp: 1900 },
-  MA: { rateBp: 2300, note: "maior alíquota geral do país, aumento recente — conferir Lei MA (NEEDS_REVIEW)" },
+  MA: { rateBp: 2300, note: "maior alíquota geral do país; confirmada em fontes públicas 2026-09" },
   MG: { rateBp: 1800 },
   MS: { rateBp: 1700 },
   MT: { rateBp: 1700 },
   PA: { rateBp: 1900 },
   PB: { rateBp: 2000 },
-  PE: { rateBp: 2050, note: "20,5% — conferir Lei PE que fixou o adicional (NEEDS_REVIEW)" },
+  PE: { rateBp: 2050, note: "20,5% efetivada 02/2024; confirmada em fontes públicas 2026-09" },
   PI: { rateBp: 2250 },
   PR: { rateBp: 1950 },
   RJ: { rateBp: 2000 },
   RN: { rateBp: 2000 },
-  RO: { rateBp: 1950, note: "subiu de 17,5% para 19,5% — conferir RICMS RO vigente (NEEDS_REVIEW)" },
+  RO: { rateBp: 1950, note: "17,5%→19,5% (2023); confirmada em fontes públicas 2026-09" },
   RR: { rateBp: 2000 },
   RS: { rateBp: 1700 },
   SC: { rateBp: 1700 },
