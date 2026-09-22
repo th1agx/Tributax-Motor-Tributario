@@ -32,6 +32,7 @@ export class QueridoDiarioCollector implements NormCollector {
     private readonly baseUrl = "https://queridodiario.ok.org.br/api/gazettes/",
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly territoryId?: string,
+    private readonly backoffMs = 2000,
   ) {}
 
   async collect(keywords: readonly string[], sinceDays: number): Promise<readonly LegalNormDocument[]> {
@@ -47,10 +48,23 @@ export class QueridoDiarioCollector implements NormCollector {
     });
     if (this.territoryId) params.set("territory_id", this.territoryId);
 
-    const res = await this.fetchImpl(`${this.baseUrl}?${params}`, {
-      headers: { accept: "application/json" },
-    });
-    if (!res.ok) throw new Error(`Querido Diário: HTTP ${res.status}`);
+    // retry com backoff (validado na prática: a API do QD responde 503
+    // intermitente a runners de CI; 3 tentativas com backoff exponencial)
+    const url = `${this.baseUrl}?${params}`;
+    let res: Response | undefined;
+    let lastError = "";
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        res = await this.fetchImpl(url, { headers: { accept: "application/json" } });
+        if (res.ok) break;
+        lastError = `HTTP ${res.status}`;
+        if (res.status < 500 && res.status !== 429) break; // só retry em 5xx/429
+      } catch (e) {
+        lastError = (e as Error).message;
+      }
+      if (attempt < 3) await new Promise((r) => setTimeout(r, attempt * this.backoffMs));
+    }
+    if (!res || !res.ok) throw new Error(`Querido Diário: ${lastError} após ${3} tentativas`);
 
     const body = (await res.json()) as { gazettes?: readonly QdGazette[] };
     const collected: LegalNormDocument[] = [];

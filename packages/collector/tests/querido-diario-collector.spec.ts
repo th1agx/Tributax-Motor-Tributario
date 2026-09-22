@@ -45,8 +45,23 @@ describe("QueridoDiarioCollector", () => {
 
   it("HTTP de erro vira exceção clara (fonte fora não derruba o ciclo — composto trata)", async () => {
     const failing = (async () => new Response("{}", { status: 503 })) as unknown as typeof fetch;
-    const c = new QueridoDiarioCollector("https://qd.test/api", failing);
-    await expect(c.collect(["ISS"], 7)).rejects.toThrow(/Querido Diário: HTTP 503/);
+    const c = new QueridoDiarioCollector("https://qd.test/api", failing, undefined, 1);
+    await expect(c.collect(["ISS"], 7)).rejects.toThrow(/Querido Diário: HTTP 503 após 3 tentativas/);
+  });
+
+  it("retry com backoff: 503 → 503 → 200 recupera e coleta", async () => {
+    let calls = 0;
+    const flaky = (async () => {
+      calls++;
+      if (calls < 3) return new Response("{}", { status: 503 });
+      return new Response(JSON.stringify({ gazettes: [gazette] }), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+    const c = new QueridoDiarioCollector("https://qd.test/api", flaky, undefined, 1);
+    const norms = await c.collect(["ISS"], 7);
+    expect(calls).toBe(3);
+    expect(norms).toHaveLength(1);
   });
 
   it("keyword filtra localmente: gazette sem o termo é descartada", async () => {
