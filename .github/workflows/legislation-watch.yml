@@ -24,10 +24,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # ISS municipal é o alvo principal: alíquota é lei municipal e o
+          # Querido Diário cobre diários municipais. Foco nos municípios do
+          # catálogo (territory_id IBGE 7 dígitos) + varredura nacional.
+          - { tribute: ISS, territory_id: "3550308", label: sao-paulo }
+          - { tribute: ISS, territory_id: "3304557", label: rio-de-janeiro }
+          - { tribute: ISS, territory_id: "3106200", label: belo-horizonte }
+          - { tribute: ISS, label: nacional }
+          # federais: Querido Diário não cobre DOU; coleta depende de RSS
+          # (WATCH_RSS_FEEDS) até fonte federal documentada — matrix mantida
+          # para quando a fonte entrar
           - { tribute: ICMS, uf: RJ }
           - { tribute: ICMS, uf: SP }
-          - { tribute: ISS }
-          - { tribute: CBS }
     steps:
       - uses: actions/checkout@v4
 
@@ -44,10 +52,11 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           WATCH_RSS_FEEDS: ${{ secrets.WATCH_RSS_FEEDS }}
+          WATCH_QD_TERRITORY_ID: ${{ matrix.territory_id }}
         run: |
           npx tsx src/agent/rag-watch.cli.ts \
             --tribute ${{ matrix.tribute }} ${{ matrix.uf && format('--uf {0}', matrix.uf) || '' }} \
-            --since 8 --out "watch-report-${{ matrix.tribute }}${{ matrix.uf && format('-{0}', matrix.uf) || '' }}.json"
+            --since 8 --out "watch-report-${{ matrix.tribute }}${{ matrix.label && format('-{0}', matrix.label) || (matrix.uf && format('-{0}', matrix.uf)) || '' }}.json"
 
       - name: Apply to API (optional — creates DRAFTs only)
         working-directory: packages/collector
@@ -63,11 +72,11 @@ jobs:
           fi
           npx tsx ../api/src/monitoring/watch-agent.cli.ts \
             --api "$TRIBUTAX_API_URL" \
-            --report "watch-report-${{ matrix.tribute }}${{ matrix.uf && format('-{0}', matrix.uf) || '' }}.json" \
+            --report "watch-report-${{ matrix.tribute }}${{ matrix.label && format('-{0}', matrix.label) || (matrix.uf && format('-{0}', matrix.uf)) || '' }}.json" \
             --apply
 
       - uses: actions/upload-artifact@v4
         with:
-          name: watch-report-${{ matrix.tribute }}${{ matrix.uf && format('-{0}', matrix.uf) || '' }}
+          name: watch-report-${{ matrix.tribute }}${{ matrix.label && format('-{0}', matrix.label) || (matrix.uf && format('-{0}', matrix.uf)) || '' }}
           path: packages/collector/watch-report-*.json
           retention-days: 30
