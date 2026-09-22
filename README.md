@@ -41,7 +41,10 @@ Nada de "caixa-preta que calcula imposto": toda decisão carrega **trace auditá
 ```json
 {
   "correlationId": "demo-1",
-  "context": { "recipient": { "address": { "state": "SP" } } },
+  "context": {
+    "issuer": { "partyRef": "12345678901234" },
+    "recipient": { "address": { "state": "SP" } }
+  },
   "items": [{
     "description": "Notebook",
     "unitPrice": { "amount": 350000 },
@@ -50,33 +53,42 @@ Nada de "caixa-preta que calcula imposto": toda decisão carrega **trace auditá
 }
 ```
 
-Resposta (real, produção — venda interestadual a consumidor final):
+Resposta (venda interestadual MG → SP a consumidor final — valores corrigidos
+2026-09: DIFAL com **base dupla** da LC 190/22 art. 13 IX "b"; **SP não cobra
+FCP geral**; decisão **por item** com `itemId` real):
 
-| Tributo | Resultado | Alíquota | Valor | Código | Fundamento |
-|---|---|---|---|---|---|
-| ICMS | TAXED | 12% | R$ 420,00 | CST 00 | Res. 22/1989 |
-| DIFAL | TAXED | 6% | R$ 210,00 | — | LC 190/2022 |
-| FCP | TAXED | 2% | R$ 70,00 | — | LC 87/96, art. 82-A |
-| PIS/COFINS | TAXED | 1,65% / 7,6% | R$ 57,75 / R$ 266,00 | CST 01 | Leis 10.637/02, 10.833/03 |
-| CBS / IBS | TAXED | 0,90% / 0,10% | R$ 31,50 / R$ 3,50 | — | LC 214/2025 (alíquotas-teste 2026) |
+| Tributo | Resultado | Valor | Fundamento |
+|---|---|---|---|
+| ICMS | TAXED | R$ 420,00 (12%) | Res. 22/1989 |
+| DIFAL | TAXED | R$ 256,10 (base dupla) | LC 190/2022, art. 13, IX, "b" e §6º, II |
+| PIS/COFINS | TAXED | R$ 57,75 / R$ 266,00 | Leis 10.637/02, 10.833/03 |
+| CBS / IBS | TAXED | R$ 31,50 / R$ 3,50 | LC 214/2025 (alíquotas-teste 2026) |
 
-…mais CFOP **6102** inferido, documento **NFC-e**, inferências (`recipient.role →
-FINAL_CONSUMER`) e `rulesetHash` para reprodutibilidade. [Resposta completa](docs/llms-overview.md).
+…mais CFOP **6102** inferido, documento **NFC-e**, `reviewReason` quando a
+regra aplicada ainda não foi conferida contra fonte primária, `warnings`/`trace`
+de todos os tributos e `rulesetHash` para reprodutibilidade.
 
 ## Por que é diferente
 
 1. **Regras como dados** ([ADR-004](docs/adr/ADR-004-regras-como-dados.md)) — nada de
-   `if` espalhado por código; regras vivem no Postgres com vigências disjuntas
-   garantidas por constraint (`EXCLUDE` com `daterange`).
-2. **Explicabilidade nativa** ([ADR-005](docs/adr/ADR-005-resolucao-de-conflitos.md),
-   [ADR-007](docs/adr/ADR-007-trace-append-only.md)) — especificidade vence conflitos;
-   decisões são append-only; toda resposta responde "por quê".
+   `if` espalhado por código; regras vivem no Postgres. Vigências disjuntas por
+   REGRA garantidas por constraint; sobreposição entre regras distintas é
+   legítima — é o que a resolução por especificidade resolve ([ADR-005](docs/adr/ADR-005-resolucao-de-conflitos.md)).
+2. **Explicabilidade nativa** ([ADR-007](docs/adr/ADR-007-trace-append-only.md)) —
+   decisões são append-only, **por item** (`itemId` real, nunca `"*"`); toda
+   resposta responde "por quê" — `warnings` e `trace` de todos os tributos.
 3. **IA que propõe, humano que aprova** ([ADR-012](docs/adr/ADR-012-monitoracao-legislativa-por-ia.md)) —
-   o agente LLM+RAG monitora DOU/RSS, extrai observações com fonte primária e cria
-   apenas rascunhos `AI_SUGGESTED`. Guardrails anti-alucinação: a alíquota precisa estar
-   escrita no texto da norma; rejeições têm motivo.
-4. **Honestidade fiscal** — `NO_RULE_FOUND` nunca vira imposto zero; incerteza vira
-   fila de revisão (`NEEDS_REVIEW`), nunca suposição.
+   o agente LLM+RAG compara catálogo × fontes e cria **apenas** rascunhos
+   `AI_SUGGESTED`; `/v1/rules` é admin-only e a IA nunca aprova (guard, não
+   promessa). Guardrails anti-alucinação: alíquota escrita no texto, janela de
+   datas plausível, confiança mínima para propor, alvo ambíguo vira triagem.
+   **Limitações conhecidas**: extração real exige `OPENAI_API_KEY` (sem ela o
+   pipeline roda offline e a extração sai vazia); o endpoint público de JSON do
+   DOU está inacessível (404/protegido) — coleta DOU requer revisão da fonte
+   (alternativa: [Querido Diário](https://queridodiario.ok.org.br)) ou feeds RSS.
+4. **Honestidade fiscal** — `NO_RULE_FOUND` nunca vira imposto zero; incerteza
+   declarada chega ao CONSUMIDOR (`reviewReason` na resposta), nunca suposição
+   silenciosa.
 5. **Feito para agentes** — documentação padrão [llms.txt](https://llmsstxt.org) servida
    pela própria API, servidor MCP para clientes com IA, SDK com retry/idempotência.
 
@@ -84,14 +96,14 @@ FINAL_CONSUMER`) e `rulesetHash` para reprodutibilidade. [Resposta completa](doc
 
 | Área | Cobertura |
 |---|---|
-| **ICMS** | 27/27 UFs (alíquota interna, fontes públicas 2026), interestadual, DIFAL 20/80, FCP (21 UFs), ST com MVA (Conv. 92/15) |
+| **ICMS** | 27/27 UFs (alíquota interna conferida em fontes públicas 2026-09), interestadual 12/7%, DIFAL **base dupla** (LC 190/22 art. 13 IX b, split 20/80), FCP, ST com MVA **ajustada** interestadual (Conv. 92/15 art. 2º VIII) |
 | **PIS/COFINS** | Não cumulativo, cumulativo, isenção, suspensão |
-| **IPI** | Não-incidência em serviços, imunidade de exportação, TIPI oficial (importador CSV RFB) |
+| **IPI** | Não-incidência em serviços, imunidade de exportação, TIPI oficial (importador CSV RFB), CST 50/51 |
 | **ISS / NFS-e** | LC 116/03: município do prestador, deduções de base, exportação não incide, retenção PJ→PJ |
-| **Simples Nacional** | DAS Anexo I (6 faixas + 7ª NEEDS_REVIEW) e Anexo III (alíquota efetiva com dedução por RBT12) |
+| **Simples Nacional** | DAS Anexo I e III — 6 faixas da LC 123/06 (LC 155/16) com alíquota efetiva e dedução por RBT12 |
 | **CBS/IBS** | LC 214/2025 — alíquotas-teste 2026 com vigência explícita e split payment sinalizado |
-| **Retenções** | IRRF/CSLL/PIS/COFINS retidos em serviços |
-| **Códigos** | CFOP inferido, CST/CSOSN por tributo (00/40/41, 102/103/400, 10/500…) |
+| **Retenções** | IRRF/CSRF retidos em serviços PJ→PJ |
+| **Códigos** | CFOP inferido, CST/CSOSN por tributo e por item |
 
 ## Arquitetura
 
@@ -166,12 +178,21 @@ Ferramentas: `tributax_simulate_taxes`, `tributax_decide_taxes`, `tributax_list_
 cd packages/collector
 OPENAI_API_KEY=... WATCH_RSS_FEEDS="https://.../rss" \
   npx tsx src/agent/rag-watch.cli.ts --tribute ICMS --uf RJ --out watch-report.json
-# cria apenas DRAFTs AI_SUGGESTED contra a API:
-npx tsx ../api/src/monitoring/watch-agent.cli.ts --report watch-report.json --apply
+# cria apenas DRAFTs AI_SUGGESTED contra a API (exige a admin key):
+TRIBUTAX_ADMIN_KEY=... npx tsx ../api/src/monitoring/watch-agent.cli.ts \
+  --api https://... --report watch-report.json --apply
 ```
 
 Rodada semanal automatizada em `.github/workflows/legislation-watch.yml` (matriz de
-alvos, dry-run + apply opcional).
+alvos, dry-run + apply opcional com `TRIBUTAX_ADMIN_KEY`).
+
+**Estado real do agente (validado 2026-09)**: o ciclo de governança funciona ponta a
+ponta — coleta/chunking/embeddings/retrieval rodam, o diff gera alertas com fonte, os
+DRAFTs `AI_SUGGESTED` são criados via API e a **IA não consegue aprovar** (transição
+bloqueada; só humano com admin key ativa). O que ainda limita produção: sem
+`OPENAI_API_KEY` a extração LLM sai vazia (modo offline); o endpoint público de JSON
+do DOU responde 404 — a coleta real hoje depende de feeds RSS (`WATCH_RSS_FEEDS`) até
+a fonte DOU ser trocada (alternativa candidata: [Querido Diário](https://queridodiario.ok.org.br)).
 
 ## Deploy
 

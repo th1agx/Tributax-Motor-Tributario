@@ -34,10 +34,10 @@ inatividade, sem SLA, token bucket in-memory vale para 1 réplica. Plano pago
 cd packages/infrastructure
 DATABASE_URL="postgres://..." npx drizzle-kit migrate
 
-# constraints e extensões custom (na ordem)
-psql "$DATABASE_URL" -f drizzle/custom/01_no_overlap.sql   # vigência disjunta
-psql "$DATABASE_URL" -f drizzle/custom/02_pgvector.sql      # RAG (pgvector)
-psql "$DATABASE_URL" -f drizzle/custom/03_tenants.sql       # multi-tenant
+# constraints e extensões custom (todas, idempotentes — via script sem psql)
+DATABASE_URL="postgres://..." node ../../scripts/migrate-custom.mjs
+# equivalente com psql: 02_pgvector.sql, 03_tenants.sql, 04_no_overlap_v2.sql
+# (vigências disjuntas POR REGRA — a 01 é legada e não cria nada)
 ```
 
 3. Semeie o catálogo e importe as tabelas oficiais (opcional):
