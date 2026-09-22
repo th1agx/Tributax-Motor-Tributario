@@ -22,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # API gratuita do Querido Diário limita requisições paralelas (503/520
+      # observados com 6 jobs simultâneos) — 2 por vez + retry/backoff
+      max-parallel: 2
       matrix:
         include:
           # ISS municipal é o alvo principal: alíquota é lei municipal e o
