@@ -99,7 +99,7 @@ de todos os tributos e `rulesetHash` para reprodutibilidade.
 | **ICMS** | 27/27 UFs (alíquota interna conferida em fontes públicas 2026-09), interestadual 12/7%, DIFAL **base dupla** (LC 190/22 art. 13 IX b, split 20/80), FCP, ST com MVA **ajustada** interestadual (Conv. 92/15 art. 2º VIII) |
 | **PIS/COFINS** | Não cumulativo, cumulativo, isenção, suspensão |
 | **IPI** | Não-incidência em serviços, imunidade de exportação, TIPI oficial (importador CSV RFB), CST 50/51 |
-| **ISS / NFS-e** | LC 116/03: município do prestador, deduções de base, exportação não incide, retenção PJ→PJ |
+| **ISS / NFS-e** | LC 116/03: município do prestador, deduções de base, exportação não incide, retenção PJ→PJ — [curadoria municipal via planilha nacional](docs/curadoria-iss.md) |
 | **Simples Nacional** | DAS Anexo I e III — 6 faixas da LC 123/06 (LC 155/16) com alíquota efetiva e dedução por RBT12 |
 | **CBS/IBS** | LC 214/2025 — alíquotas-teste 2026 com vigência explícita e split payment sinalizado |
 | **Retenções** | IRRF/CSRF retidos em serviços PJ→PJ |
