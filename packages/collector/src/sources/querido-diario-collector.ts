@@ -48,12 +48,14 @@ export class QueridoDiarioCollector implements NormCollector {
     });
     if (this.territoryId) params.set("territory_id", this.territoryId);
 
-    // retry com backoff (validado na prática: a API do QD responde 503
-    // intermitente a runners de CI; 3 tentativas com backoff exponencial)
+    // retry com backoff (validado na prática: a API gratuita do QD tem
+    // janelas de indisponibilidade global — "no available server" — e
+    // limita rajadas de CI; 4 tentativas com backoff para o job semanal)
     const url = `${this.baseUrl}?${params}`;
     let res: Response | undefined;
     let lastError = "";
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    const maxAttempts = 4;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         res = await this.fetchImpl(url, { headers: { accept: "application/json" } });
         if (res.ok) break;
@@ -62,9 +64,9 @@ export class QueridoDiarioCollector implements NormCollector {
       } catch (e) {
         lastError = (e as Error).message;
       }
-      if (attempt < 3) await new Promise((r) => setTimeout(r, attempt * this.backoffMs));
+      if (attempt < maxAttempts) await new Promise((r) => setTimeout(r, attempt * this.backoffMs));
     }
-    if (!res || !res.ok) throw new Error(`Querido Diário: ${lastError} após ${3} tentativas`);
+    if (!res || !res.ok) throw new Error(`Querido Diário: ${lastError} após ${maxAttempts} tentativas`);
 
     const body = (await res.json()) as { gazettes?: readonly QdGazette[] };
     const collected: LegalNormDocument[] = [];

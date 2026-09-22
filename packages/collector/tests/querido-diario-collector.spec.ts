@@ -46,7 +46,7 @@ describe("QueridoDiarioCollector", () => {
   it("HTTP de erro vira exceção clara (fonte fora não derruba o ciclo — composto trata)", async () => {
     const failing = (async () => new Response("{}", { status: 503 })) as unknown as typeof fetch;
     const c = new QueridoDiarioCollector("https://qd.test/api", failing, undefined, 1);
-    await expect(c.collect(["ISS"], 7)).rejects.toThrow(/Querido Diário: HTTP 503 após 3 tentativas/);
+    await expect(c.collect(["ISS"], 7)).rejects.toThrow(/Querido Diário: HTTP 503 após 4 tentativas/);
   });
 
   it("retry com backoff: 503 → 503 → 200 recupera e coleta", async () => {

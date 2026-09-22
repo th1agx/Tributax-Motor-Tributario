@@ -191,9 +191,12 @@ alvos, dry-run + apply opcional com `TRIBUTAX_ADMIN_KEY`).
 diários municipais (uso principal: ISS, cuja alíquota é lei municipal; município
 específico via `WATCH_QD_TERRITORY_ID`), o pipeline indexa/recupera, o diff gera
 alertas com fonte e os DRAFTs `AI_SUGGESTED` são criados via API — e a **IA não
-consegue aprovar** (só humano com admin key ativa). Restrições restantes: sem
-`OPENAI_API_KEY` a extração LLM sai vazia (modo offline); o endpoint JSON federal
-do DOU segue inacessível (coletor permanece, falha tolerada).
+consegue aprovar** (só humano com admin key ativa). Coleta real demonstrada: 50
+diários municipais com menções a ISS numa varredura de 7 dias. Ressalvas: a API
+gratuita do Querido Diário tem janelas de indisponibilidade (503 global) e limita
+rajadas — o coletor tem retry/backoff e a varredura semanal segue `max-parallel: 2`;
+sem `OPENAI_API_KEY` a extração LLM sai vazia (modo offline); o endpoint JSON
+federal do DOU segue inacessível (coletor permanece, falha tolerada).
 
 ## Deploy
 
