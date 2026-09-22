@@ -1,6 +1,7 @@
 export type { LegalNormDocument, NormCollector } from "./sources/types.js";
 export { RssCollector } from "./sources/rss-collector.js";
 export { DouCollector } from "./sources/dou-collector.js";
+export { QueridoDiarioCollector } from "./sources/querido-diario-collector.js";
 
 export type { NormChunk, NormStore } from "./store/norm-store.js";
 export { InMemoryNormStore, chunkId, sha256 } from "./store/norm-store.js";

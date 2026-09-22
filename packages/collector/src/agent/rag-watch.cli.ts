@@ -14,6 +14,7 @@
 import { runWatchCycle, type WatchCycleResult } from "./watch-cycle.js";
 import { RssCollector } from "../sources/rss-collector.js";
 import { DouCollector } from "../sources/dou-collector.js";
+import { QueridoDiarioCollector } from "../sources/querido-diario-collector.js";
 import { InMemoryNormStore, type NormStore } from "../store/norm-store.js";
 import { FakeEmbeddingProvider, OpenAIEmbeddingProvider } from "../rag/embeddings.js";
 import { LlmObservationExtractor, type LlmClient } from "../extract/observation-extractor.js";
@@ -53,6 +54,16 @@ async function main(): Promise<void> {
   const hasLlm = Boolean(process.env.OPENAI_API_KEY);
 
   const collectors = [
+    // Querido Diário (API pública, documentada): diários MUNICIPAIS — a fonte
+    // principal para monitorar ISS (alíquota é lei municipal). Município
+    // específico via WATCH_QD_TERRITORY_ID (IBGE 7 dígitos).
+    new QueridoDiarioCollector(
+      undefined,
+      fetch,
+      process.env.WATCH_QD_TERRITORY_ID || undefined,
+    ),
+    // DOU federal: endpoint JSON da Imprensa Nacional inacessível (404 desde
+    // 2026-09) — permanece por se restaurar; falha é tolerada sem derrubar o ciclo
     new DouCollector(),
     // diários/SEFAZs: alimentar via env WATCH_RSS_FEEDS (URLs separadas por vírgula)
     ...(process.env.WATCH_RSS_FEEDS ?? "")

@@ -186,13 +186,14 @@ TRIBUTAX_ADMIN_KEY=... npx tsx ../api/src/monitoring/watch-agent.cli.ts \
 Rodada semanal automatizada em `.github/workflows/legislation-watch.yml` (matriz de
 alvos, dry-run + apply opcional com `TRIBUTAX_ADMIN_KEY`).
 
-**Estado real do agente (validado 2026-09)**: o ciclo de governança funciona ponta a
-ponta — coleta/chunking/embeddings/retrieval rodam, o diff gera alertas com fonte, os
-DRAFTs `AI_SUGGESTED` são criados via API e a **IA não consegue aprovar** (transição
-bloqueada; só humano com admin key ativa). O que ainda limita produção: sem
-`OPENAI_API_KEY` a extração LLM sai vazia (modo offline); o endpoint público de JSON
-do DOU responde 404 — a coleta real hoje depende de feeds RSS (`WATCH_RSS_FEEDS`) até
-a fonte DOU ser trocada (alternativa candidata: [Querido Diário](https://queridodiario.ok.org.br)).
+**Estado real do agente (validado 2026-09)**: o ciclo funciona ponta a ponta com
+**fonte pública real** — o [Querido Diário](https://queridodiario.ok.org.br) coleta
+diários municipais (uso principal: ISS, cuja alíquota é lei municipal; município
+específico via `WATCH_QD_TERRITORY_ID`), o pipeline indexa/recupera, o diff gera
+alertas com fonte e os DRAFTs `AI_SUGGESTED` são criados via API — e a **IA não
+consegue aprovar** (só humano com admin key ativa). Restrições restantes: sem
+`OPENAI_API_KEY` a extração LLM sai vazia (modo offline); o endpoint JSON federal
+do DOU segue inacessível (coletor permanece, falha tolerada).
 
 ## Deploy
 
