@@ -53,6 +53,10 @@ jobs:
       - name: Run watch cycle (dry-run)
         working-directory: packages/collector
         env:
+          # stack 100% gratuita: GEMINI_API_KEY (AI Studio, free tier sem
+          # cartão) tem prioridade; GROQ_API_KEY como alternativa livre
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           WATCH_RSS_FEEDS: ${{ secrets.WATCH_RSS_FEEDS }}
           WATCH_QD_TERRITORY_ID: ${{ matrix.territory_id }}

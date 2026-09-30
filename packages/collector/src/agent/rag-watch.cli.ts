@@ -16,7 +16,9 @@ import { RssCollector } from "../sources/rss-collector.js";
 import { DouCollector } from "../sources/dou-collector.js";
 import { QueridoDiarioCollector } from "../sources/querido-diario-collector.js";
 import { InMemoryNormStore, type NormStore } from "../store/norm-store.js";
+import type { EmbeddingProvider } from "../rag/embeddings.js";
 import { FakeEmbeddingProvider, OpenAIEmbeddingProvider } from "../rag/embeddings.js";
+import { GeminiChatClient, GeminiEmbeddingProvider } from "../rag/gemini.js";
 import { LlmObservationExtractor, type LlmClient } from "../extract/observation-extractor.js";
 import { OpenAiChatClient } from "../extract/openai-client.js";
 
@@ -83,8 +85,38 @@ async function main(): Promise<void> {
     },
   };
 
-  const embeddings = hasLlm ? new OpenAIEmbeddingProvider() : new FakeEmbeddingProvider();
-  const llm: LlmClient = hasLlm ? new OpenAiChatClient() : { completeJson: async () => [] };
+  // Provedor LLM — PRIORIDADE FREE TIER SEM CARTÃO (decisão 2026-09):
+  // 1) GEMINI_API_KEY (AI Studio, gratuito) — chat + embeddings nativos;
+  // 2) GROQ_API_KEY (gratuito, OpenAI-compatível) — chat (embeddings: fake);
+  // 3) OPENAI_API_KEY (pago) — mantido para quem já tem.
+  const geminiKey = process.env.GEMINI_API_KEY ?? "";
+  const groqKey = process.env.GROQ_API_KEY ?? "";
+  const usePostgresStore = Boolean(process.env.DATABASE_URL);
+
+  let embeddings: EmbeddingProvider;
+  let llm: LlmClient;
+  if (geminiKey) {
+    console.error("[rag-watch] LLM: Google Gemini (free tier)");
+    embeddings = new GeminiEmbeddingProvider();
+    llm = new GeminiChatClient();
+  } else if (groqKey) {
+    console.error("[rag-watch] LLM: Groq (free tier) — embeddings offline (fake)");
+    // fake com 1536 dims quando há pgvector (coluna vector(1536))
+    embeddings = new FakeEmbeddingProvider(usePostgresStore ? 1536 : 128);
+    llm = new OpenAiChatClient({
+      baseUrl: "https://api.groq.com/openai/v1",
+      apiKey: groqKey,
+      model: process.env.LLM_MODEL ?? "llama-3.3-70b-versatile",
+    });
+  } else if (hasLlm) {
+    console.error("[rag-watch] LLM: OpenAI");
+    embeddings = new OpenAIEmbeddingProvider();
+    llm = new OpenAiChatClient();
+  } else {
+    console.error("[rag-watch] sem GEMINI_API_KEY/GROQ_API_KEY/OPENAI_API_KEY — extração offline (fake), observações saem vazias");
+    embeddings = new FakeEmbeddingProvider(usePostgresStore ? 1536 : 128);
+    llm = { completeJson: async () => [] };
+  }
 
   // NormStore PERSISTENTE quando há banco (auditoria 3.1): pgvector já
   // provisionado e ocioso; memória morre com o processo e re-embeda tudo.
