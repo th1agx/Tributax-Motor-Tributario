@@ -9,42 +9,47 @@ legal citada, e a escala vem pela **importação da planilha nacional oficial**.
 
 **Portal Nacional da NFS-e — "Alíquotas de ISSQN"** (gov.br, publicação de
 03/09/2026): uma planilha **CSV por estado** + TXT consolidado com as alíquotas
-cadastradas dos 5.571 municípios. Acesse pelo Portal da NFS-e em
-<https://www.gov.br/nfse> (página "Alíquotas de ISSQN"; o link direto de
-download exige navegação no portal — não há URL estável para automação hoje).
+cadastradas por município **e por código de serviço**. Download direto:
 
-Notas da fonte: ~60% das linhas estão no teto de 5%; nenhuma viola o piso de
-2%; a versão de 09/2026 **ainda não cobre SP, Rio e DF** (nesses, usar a lei
-municipal direta — o catálogo em código já traz SP/RJ/BH com base legal).
-
-## Formato aceito pelo importador
-
-CSV com colunas `ibge;uf;nome;aliquota` (separador `;` ou `,`; cabeçalho
-opcional; alíquota em % com vírgula decimal):
-
-```csv
-ibge;uf;nome;aliquota
-3106200;MG;Belo Horizonte;3,0
-3548500;SP;Santos;2,5
+```
+https://www.gov.br/nfse/pt-br/biblioteca/aliquotas/aliquotas-municipios-20260903-extr1.zip
 ```
 
-Linhas fora da banda 2–5% da LC 116 são **descartadas** na carga (nunca
-entram silenciosamente).
+(página: <https://www.gov.br/nfse/pt-br/biblioteca/aliquotas/aliquotas-de-issqn>;
+o sufixo do ZIP carrega a data da publicação — conferir a página para versões novas)
 
-## Importar
+Formato oficial (separador `;`):
+
+```
+codigo_ibge;uf;nome_municipio;codigo_servico;incidencia;aliquota;dt_ini;dt_fim
+3106200;MG;Belo Horizonte;01.01.01.000;01.01.01.000;5;2026-01-01T00:00:00;
+```
+
+## Importar (planilha nacional — caminho recomendado)
+
+O importador nacional agrupa por (município × alíquota) e casa o item por
+código de serviço (`serviceCodeIn`); linhas fora da banda 2–5% são descartadas
+na carga. Números da versão 03/09/2026: **1.900.385 linhas → 5.340 municípios
+→ 11.692 regras**.
 
 ```bash
-# 1. baixe os CSVs da planilha nacional no Portal da NFS-e (gov.br/nfse)
-# 2. consolide no formato acima (um arquivo por estado também serve) e rode:
+# 1. baixe e extraia o ZIP oficial (URL acima)
+curl -LO https://www.gov.br/nfse/pt-br/biblioteca/aliquotas/aliquotas-municipios-20260903-extr1.zip
+unzip aliquotas-municipios-20260903-extr1.zip
 
 cd packages/infrastructure
 
-# conferência sem tocar no banco (recomendado primeiro):
-npx tsx src/iss-import.cli.ts --csv iss-municipios.csv --dry-run
+# 2. conferência sem tocar no banco (estatísticas):
+npx tsx src/iss-import-nacional.cli.ts --txt ../aliquotas-municipios-20260903.txt --dry-run
 
-# importação real (idempotente por IBGE; primeira ocorrência vence):
-DATABASE_URL="postgres://..." npx tsx src/iss-import.cli.ts --csv iss-municipios.csv
+# 3. importação real (lotes de 400; idempotente por id+versão):
+DATABASE_URL="postgres://..." npx tsx src/iss-import-nacional.cli.ts --txt ../aliquotas-municipios-20260903.txt
 ```
+
+## Formato antigo (tabela curada, uma taxa por município)
+
+CSV `ibge;uf;nome;aliquota` via `iss-import.cli.ts` — mantido para curadoria
+manual; prefira o importador nacional acima.
 
 O importador:
 - valida a banda 2–5% (LC 116 art. 8º-A) e deduplica por IBGE;

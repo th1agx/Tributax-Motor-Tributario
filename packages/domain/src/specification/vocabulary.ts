@@ -53,6 +53,11 @@ const registry: Record<string, PredicateEvaluator> = {
     const code = expectString(a, "code");
     return ctx.items.some((i) => i.serviceCode === code);
   },
+  /** Item com código de serviço em uma lista (importador nacional ISSQN). */
+  serviceCodeIn: (ctx, a) => {
+    const list = expectStringArray(a, "list");
+    return ctx.items.some((i) => i.serviceCode !== undefined && list.includes(i.serviceCode));
+  },
   itemOriginIs: (ctx, a) => {
     const origin = expectString(a, "origin") as MerchandiseOrigin;
     return ctx.items.some((i) => i.origin === origin);

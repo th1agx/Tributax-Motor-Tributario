@@ -11,7 +11,9 @@ services:
       - key: DATABASE_URL
         sync: false # cole a connection string do Neon no painel (ou via CLI)
       - key: TRIBUTAX_ADMIN_KEY
-        generateValue: true # gera um segredo forte para a administração
+        sync: false # cole A MESMA chave gravada como secret TRIBUTAX_ADMIN_KEY
+                    # do repo (GitHub Actions) — o workflow de monitoração
+                    # precisa dela para aplicar DRAFTs nesta instância
       - key: RATE_LIMIT_RPM
         value: "240"
       - key: RATE_LIMIT_BURST
