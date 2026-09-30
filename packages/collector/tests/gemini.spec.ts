@@ -23,10 +23,10 @@ describe("Gemini (free tier) — chat", () => {
     if (old) process.env.GEMINI_API_KEY = old;
   });
 
-  it("HTTP de erro vira exceção com status", async () => {
+  it("HTTP de erro vira exceção com status (após retry e fallback)", async () => {
     const fail = (async () => new Response("{}", { status: 429 })) as unknown as typeof fetch;
-    const c = new GeminiChatClient({ apiKey: "k", fetchImpl: fail });
-    await expect(c.completeJson("p")).rejects.toThrow(/Gemini: HTTP 429/);
+    const c = new GeminiChatClient({ apiKey: "k", fetchImpl: fail, backoffMs: 1 });
+    await expect(c.completeJson("p")).rejects.toThrow(/Gemini: .*HTTP 429/);
   });
 });
 
